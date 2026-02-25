@@ -1,11 +1,11 @@
 import NetInfo, { NetInfoState, NetInfoStateType } from '@react-native-community/netinfo';
 
-type NetworkChangeCallback = (isOnline: boolean) => void;
-type SyncCallback = () => void;
+type NetworkCallback = (isOnline: boolean) => void;
+type SyncCallback = () => Promise<void>;
 
 class NetworkMonitor {
   private unsubscribe: (() => void) | null = null;
-  private callbacks: NetworkChangeCallback[] = [];
+  private callbacks: NetworkCallback[] = [];
   private syncCallback: SyncCallback | null = null;
   private isCurrentlyOnline = false;
 
@@ -16,7 +16,7 @@ class NetworkMonitor {
 
       // Trigger sync when coming online
       if (!wasOnline && this.isCurrentlyOnline && this.syncCallback) {
-        this.syncCallback();
+        this.syncCallback().catch(console.error);
       }
 
       // Notify all callbacks
@@ -29,6 +29,7 @@ class NetworkMonitor {
       this.unsubscribe();
       this.unsubscribe = null;
     }
+    this.callbacks = [];
   }
 
   async isOnline(): Promise<boolean> {
@@ -41,42 +42,32 @@ class NetworkMonitor {
     return state.type;
   }
 
-  onNetworkChange(callback: NetworkChangeCallback): void {
+  onNetworkChange(callback: NetworkCallback): () => void {
     this.callbacks.push(callback);
+    return () => {
+      this.callbacks = this.callbacks.filter(cb => cb !== callback);
+    };
   }
 
   setSyncCallback(callback: SyncCallback): void {
     this.syncCallback = callback;
   }
 
-  removeNetworkChangeCallback(callback: NetworkChangeCallback): void {
-    this.callbacks = this.callbacks.filter(cb => cb !== callback);
-  }
-
   async getNetworkQuality(): Promise<'wifi' | 'cellular' | 'unknown'> {
     const state = await NetInfo.fetch();
-    switch (state.type) {
-      case NetInfoStateType.wifi:
-        return 'wifi';
-      case NetInfoStateType.cellular:
-        return 'cellular';
-      default:
-        return 'unknown';
-    }
+    if (state.type === 'wifi') return 'wifi';
+    if (state.type === 'cellular') return 'cellular';
+    return 'unknown';
   }
 }
 
-// Singleton instance
-const networkMonitor = new NetworkMonitor();
+export const networkMonitor = new NetworkMonitor();
 
-// Export functions
-export const startNetworkMonitoring = (): void => networkMonitor.startNetworkMonitoring();
-export const stopNetworkMonitoring = (): void => networkMonitor.stopNetworkMonitoring();
-export const isOnline = (): Promise<boolean> => networkMonitor.isOnline();
-export const getNetworkType = (): Promise<NetInfoStateType> => networkMonitor.getNetworkType();
-export const onNetworkChange = (callback: NetworkChangeCallback): void => networkMonitor.onNetworkChange(callback);
-export const setSyncCallback = (callback: SyncCallback): void => networkMonitor.setSyncCallback(callback);
-export const removeNetworkChangeCallback = (callback: NetworkChangeCallback): void => networkMonitor.removeNetworkChangeCallback(callback);
-export const getNetworkQuality = (): Promise<'wifi' | 'cellular' | 'unknown'> => networkMonitor.getNetworkQuality();
-
-export default networkMonitor;
+// Convenience exports
+export const startNetworkMonitoring = () => networkMonitor.startNetworkMonitoring();
+export const stopNetworkMonitoring = () => networkMonitor.stopNetworkMonitoring();
+export const isOnline = () => networkMonitor.isOnline();
+export const getNetworkType = () => networkMonitor.getNetworkType();
+export const onNetworkChange = (callback: NetworkCallback) => networkMonitor.onNetworkChange(callback);
+export const setSyncCallback = (callback: SyncCallback) => networkMonitor.setSyncCallback(callback);
+export const getNetworkQuality = () => networkMonitor.getNetworkQuality();
