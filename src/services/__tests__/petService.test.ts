@@ -3,7 +3,7 @@ const mockPost = jest.fn();
 const mockPut = jest.fn();
 const mockDelete = jest.fn();
 
-jest.mock('../../../backend/services/apiClient', () => ({
+jest.mock('../apiClient', () => ({
   __esModule: true,
   default: {
     get: mockGet,

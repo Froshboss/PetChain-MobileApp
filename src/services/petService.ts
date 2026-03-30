@@ -1,14 +1,48 @@
 import axios from 'axios';
-import apiClient from '../../backend/services/apiClient';
-import {
-  API_ENDPOINTS,
-  type ApiResponse,
-  type CreatePetRequest,
-  type CreatePetResponse,
-  type GetPetResponse,
-  type UpdatePetRequest,
-} from '../../backend/types/api';
+import apiClient from './apiClient';
 import { parseQRCodeData } from './qrCodeService';
+
+export interface PetOwnerSummary {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface Pet {
+  id: string;
+  name: string;
+  species: string;
+  breed?: string;
+  dateOfBirth?: string;
+  microchipId?: string;
+  ownerId: string;
+  owner?: PetOwnerSummary;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePetInput {
+  name: string;
+  species: string;
+  breed?: string;
+  dateOfBirth?: string;
+  microchipId?: string;
+  ownerId: string;
+}
+
+export interface UpdatePetInput {
+  name?: string;
+  species?: string;
+  breed?: string;
+  dateOfBirth?: string;
+  microchipId?: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
 
 export class PetServiceError extends Error {
   constructor(
@@ -23,6 +57,7 @@ export class PetServiceError extends Error {
 }
 
 const QR_DEEP_LINK_PREFIX = 'petchain://pet/';
+const PETS_ENDPOINT = '/pets';
 
 function unwrapApiData<T>(payload: ApiResponse<T> | T): T {
   if (
@@ -89,41 +124,39 @@ function extractPetIdFromQrScan(scanData: string): string | null {
   }
 }
 
-export async function getAllPets(): Promise<GetPetResponse[]> {
+export async function getAllPets(): Promise<Pet[]> {
   try {
-    const response = await apiClient.get<ApiResponse<GetPetResponse[]> | GetPetResponse[]>(
-      API_ENDPOINTS.PETS_LIST,
-    );
+    const response = await apiClient.get<ApiResponse<Pet[]> | Pet[]>(PETS_ENDPOINT);
     return unwrapApiData(response.data);
   } catch (error) {
     throw toPetServiceError(error);
   }
 }
 
-export async function getPetById(petId: string): Promise<GetPetResponse> {
+export async function getPetById(petId: string): Promise<Pet> {
   const normalizedPetId = petId.trim();
   if (!normalizedPetId) {
     throw new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
   }
 
   try {
-    const endpoint = replacePathParam(API_ENDPOINTS.PETS_GET, 'id', normalizedPetId);
-    const response = await apiClient.get<ApiResponse<GetPetResponse> | GetPetResponse>(endpoint);
+    const endpoint = `${PETS_ENDPOINT}/${encodeURIComponent(normalizedPetId)}`;
+    const response = await apiClient.get<ApiResponse<Pet> | Pet>(endpoint);
     return unwrapApiData(response.data);
   } catch (error) {
     throw toPetServiceError(error);
   }
 }
 
-export async function getPetByQRCode(qrCode: string): Promise<GetPetResponse> {
+export async function getPetByQRCode(qrCode: string): Promise<Pet> {
   const scannedValue = qrCode.trim();
   if (!scannedValue) {
     throw new PetServiceError('QR code is required', 'INVALID_QR_CODE');
   }
 
   try {
-    const response = await apiClient.get<ApiResponse<GetPetResponse> | GetPetResponse>(
-      `${API_ENDPOINTS.PETS_LIST}/qr/${encodeURIComponent(scannedValue)}`,
+    const response = await apiClient.get<ApiResponse<Pet> | Pet>(
+      `${PETS_ENDPOINT}/qr/${encodeURIComponent(scannedValue)}`,
     );
     return unwrapApiData(response.data);
   } catch (error) {
@@ -138,12 +171,9 @@ export async function getPetByQRCode(qrCode: string): Promise<GetPetResponse> {
   }
 }
 
-export async function createPet(data: CreatePetRequest): Promise<CreatePetResponse> {
+export async function createPet(data: CreatePetInput): Promise<Pet> {
   try {
-    const response = await apiClient.post<ApiResponse<CreatePetResponse> | CreatePetResponse>(
-      API_ENDPOINTS.PETS_CREATE,
-      data,
-    );
+    const response = await apiClient.post<ApiResponse<Pet> | Pet>(PETS_ENDPOINT, data);
     return unwrapApiData(response.data);
   } catch (error) {
     throw toPetServiceError(error);
@@ -152,19 +182,16 @@ export async function createPet(data: CreatePetRequest): Promise<CreatePetRespon
 
 export async function updatePet(
   petId: string,
-  data: UpdatePetRequest,
-): Promise<GetPetResponse> {
+  data: UpdatePetInput,
+): Promise<Pet> {
   const normalizedPetId = petId.trim();
   if (!normalizedPetId) {
     throw new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
   }
 
   try {
-    const endpoint = replacePathParam(API_ENDPOINTS.PETS_UPDATE, 'id', normalizedPetId);
-    const response = await apiClient.put<ApiResponse<GetPetResponse> | GetPetResponse>(
-      endpoint,
-      data,
-    );
+    const endpoint = `${PETS_ENDPOINT}/${encodeURIComponent(normalizedPetId)}`;
+    const response = await apiClient.put<ApiResponse<Pet> | Pet>(endpoint, data);
     return unwrapApiData(response.data);
   } catch (error) {
     throw toPetServiceError(error);
@@ -178,7 +205,7 @@ export async function deletePet(petId: string): Promise<void> {
   }
 
   try {
-    const endpoint = replacePathParam(API_ENDPOINTS.PETS_DELETE, 'id', normalizedPetId);
+    const endpoint = `${PETS_ENDPOINT}/${encodeURIComponent(normalizedPetId)}`;
     await apiClient.delete<ApiResponse<null> | null>(endpoint);
   } catch (error) {
     throw toPetServiceError(error);
