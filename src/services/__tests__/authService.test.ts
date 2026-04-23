@@ -50,7 +50,7 @@ jest.mock('react-native-keychain', () => ({
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
 import * as authService from '../authService';
-import { login, logout, getToken, isAuthenticated, refreshToken, AuthError } from '../authService';
+import { login, loginWithOAuth, logout, getToken, isAuthenticated, refreshToken, AuthError } from '../authService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -146,6 +146,37 @@ describe('login()', () => {
 
     const session = await login('user@example.com', 'Password1');
     expect(session.refreshToken).toBeUndefined();
+  });
+});
+
+describe('loginWithOAuth()', () => {
+  it('logs in with Google and stores tokens', async () => {
+    mockPost.mockResolvedValueOnce({ data: MOCK_LOGIN_RESPONSE });
+
+    const session = await loginWithOAuth('google', 'google-id-token');
+
+    expect(session.user.email).toBe('user@example.com');
+    expect(await getToken()).toBe(FUTURE_TOKEN);
+    expect(mockPost).toHaveBeenCalledWith('/auth/oauth/google', {
+      idToken: 'google-id-token',
+    });
+  });
+
+  it('logs in with Apple and stores tokens', async () => {
+    mockPost.mockResolvedValueOnce({ data: MOCK_LOGIN_RESPONSE });
+
+    const session = await loginWithOAuth('apple', 'apple-id-token');
+
+    expect(session.token).toBe(FUTURE_TOKEN);
+    expect(mockPost).toHaveBeenCalledWith('/auth/oauth/apple', {
+      idToken: 'apple-id-token',
+    });
+  });
+
+  it('throws UNSUPPORTED_OAUTH_PROVIDER for unsupported providers', async () => {
+    await expect(loginWithOAuth('twitter' as never, 'token')).rejects.toMatchObject({
+      code: 'UNSUPPORTED_OAUTH_PROVIDER',
+    });
   });
 });
 
