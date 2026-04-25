@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,7 +10,7 @@ import {
 } from 'react-native';
 
 import petService, { type Pet } from '../services/petService';
-import { getPhoto } from '../utils/petPhotoStore';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 interface Props {
   onSelectPet: (pet: Pet) => void;
@@ -20,7 +19,6 @@ interface Props {
 
 const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
   const [pets, setPets] = useState<Pet[]>([]);
-  const [photos, setPhotos] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -28,14 +26,6 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
     try {
       const data = await petService.getAllPets();
       setPets(data);
-      const photoMap: Record<string, string> = {};
-      await Promise.all(
-        data.map(async (p) => {
-          const uri = await getPhoto(p.id);
-          if (uri) photoMap[p.id] = uri;
-        }),
-      );
-      setPhotos(photoMap);
     } catch {
       Alert.alert('Error', 'Failed to load pets.');
     } finally {

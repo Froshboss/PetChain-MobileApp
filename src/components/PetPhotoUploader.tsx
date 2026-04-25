@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Image, Text, Alert } from 'react-native';
+import { View, TouchableOpacity, Text, Alert } from 'react-native';
 import petService from '../services/petService';
+import { OptimizedImage } from './OptimizedImage';
 
 interface PetPhotoUploaderProps {
   petId: string;
   currentPhotoUrl?: string;
+  currentThumbnailUrl?: string;
   onPhotoUploaded?: (url: string) => void;
 }
 
@@ -44,8 +46,9 @@ export const PetPhotoUploader: React.FC<PetPhotoUploaderProps> = ({
     <TouchableOpacity onPress={handleUpload} disabled={uploading}>
       <View style={{ width: 120, height: 120, backgroundColor: '#f0f0f0', borderRadius: 8 }}>
         {photoUrl ? (
-          <Image 
-            source={{ uri: photoUrl }} 
+          <OptimizedImage 
+            uri={photoUrl} 
+            thumbnailUri={thumbnailUrl}
             style={{ width: '100%', height: '100%', borderRadius: 8 }}
             resizeMode="cover"
           />

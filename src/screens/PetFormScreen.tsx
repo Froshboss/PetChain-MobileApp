@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
 
 import petService, { type Pet } from '../services/petService';
 import { getPhoto, removePhoto, savePhoto } from '../utils/petPhotoStore';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 interface Props {
   /** Pass a pet to edit; omit for add mode. */

@@ -105,6 +105,14 @@ export const uploadToStorage = async (
       name: `pet-${petId}-${Date.now()}.jpg`,
     } as unknown as Blob);
 
+    if (thumbnailUri) {
+      formData.append('thumbnail', {
+        uri: Platform.OS === 'ios' ? thumbnailUri.replace('file://', '') : thumbnailUri,
+        type: 'image/jpeg',
+        name: `pet-${petId}-${Date.now()}-thumb.jpg`,
+      } as any);
+    }
+
     const response = await fetch('/api/upload/pet-photo', {
       method: 'POST',
       body: formData,

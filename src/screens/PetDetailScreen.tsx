@@ -23,7 +23,6 @@ const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit }) => {
   useSecureScreen();
 
   const [pet, setPet] = useState<Pet | null>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -32,7 +31,6 @@ const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit }) => {
         getPhoto(petId),
       ]);
       setPet(data);
-      setPhoto(uri);
     } catch {
       Alert.alert("Error", "Failed to load pet details.");
       onBack();
