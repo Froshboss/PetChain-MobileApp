@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import petService, { type Pet } from '../services/petService';
-import { getPhoto } from '../utils/petPhotoStore';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 interface Props {
   petId: string;
@@ -12,13 +12,11 @@ interface Props {
 
 const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit }) => {
   const [pet, setPet] = useState<Pet | null>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [data, uri] = await Promise.all([petService.getPetById(petId), getPhoto(petId)]);
+      const data = await petService.getPetById(petId);
       setPet(data);
-      setPhoto(uri);
     } catch {
       Alert.alert('Error', 'Failed to load pet details.');
       onBack();
@@ -76,8 +74,12 @@ const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit }) => {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Photo */}
         <View style={styles.photoSection}>
-          {photo ? (
-            <Image source={{ uri: photo }} style={styles.photo} />
+          {pet.photoUrl ? (
+            <OptimizedImage 
+              uri={pet.photoUrl} 
+              thumbnailUri={pet.thumbnailUrl}
+              style={styles.photo} 
+            />
           ) : (
             <View style={[styles.photo, styles.photoPlaceholder]}>
               <Text style={styles.photoEmoji}>🐾</Text>
