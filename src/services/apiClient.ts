@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
 import config from '../config';
-import { getToken } from './authService';
+import { setupInterceptors } from '../middleware/apiInterceptors';
 
 // --- Circuit Breaker ---
 type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
@@ -54,14 +54,7 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-apiClient.interceptors.request.use(async (requestConfig) => {
-  const token = await getToken();
-  if (token) {
-    requestConfig.headers = requestConfig.headers ?? {};
-    requestConfig.headers.Authorization = `Bearer ${token}`;
-  }
-  return requestConfig;
-});
+setupInterceptors(apiClient);
 
 // --- Resilient request wrapper ---
 export async function resilientRequest<T>(
