@@ -25,7 +25,10 @@
       "**/__tests__/**/*.test.ts"
     ],
     "moduleNameMapper": {
+      "^react-native$": "<rootDir>/src/__mocks__/react-native.ts",
       "^react-native-keychain$": "<rootDir>/src/__mocks__/react-native-keychain.ts",
+      "^react-native-image-picker$": "<rootDir>/src/__mocks__/react-native-image-picker.ts",
+      "^react-native-image-resizer$": "<rootDir>/src/__mocks__/react-native-image-resizer.ts",
       "^expo-constants$": "<rootDir>/src/__mocks__/expo-constants.ts"
     },
     "collectCoverageFrom": [
