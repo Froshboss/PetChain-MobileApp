@@ -9,7 +9,9 @@ jest.mock('react-native-image-picker', () => ({
 
 jest.mock('react-native-image-resizer', () => ({
   __esModule: true,
-  default: { createResizedImage: jest.fn() },
+  default: {
+    createResizedImage: jest.fn(),
+  },
 }));
 
 const mockLaunchImageLibrary = launchImageLibrary as jest.Mock;
@@ -26,12 +28,15 @@ describe('imageUtils', () => {
     });
 
     it('should return image data when successful', async () => {
+      const mockAsset = {
+        uri: 'file://test.jpg',
+        type: 'image/jpeg',
+        fileName: 'test.jpg',
+        fileSize: 1024,
+      };
+
       mockLaunchImageLibrary.mockImplementation((_options, callback) => {
-        callback({
-          assets: [
-            { uri: 'file://test.jpg', type: 'image/jpeg', fileName: 'test.jpg', fileSize: 1024 },
-          ],
-        });
+        callback({ assets: [mockAsset] });
       });
       const result = await pickImage();
       expect(result).toEqual({

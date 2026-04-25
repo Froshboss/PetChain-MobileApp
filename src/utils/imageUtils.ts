@@ -98,6 +98,7 @@ export const uploadToStorage = async (
 ): Promise<ImageUploadResult> => {
   try {
     const formData = new FormData();
+
     formData.append('file', {
       uri: Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri,
       type: 'image/jpeg',
