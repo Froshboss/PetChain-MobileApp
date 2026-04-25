@@ -3,12 +3,10 @@ import ImageResizer from 'react-native-image-resizer';
 
 import { pickImage, compressImage } from '../imageUtils';
 
-// Mock react-native-image-picker
 jest.mock('react-native-image-picker', () => ({
   launchImageLibrary: jest.fn(),
 }));
 
-// Mock react-native-image-resizer
 jest.mock('react-native-image-resizer', () => ({
   __esModule: true,
   default: {
@@ -25,7 +23,6 @@ describe('imageUtils', () => {
       mockLaunchImageLibrary.mockImplementation((_options, callback) => {
         callback({ didCancel: true });
       });
-
       const result = await pickImage();
       expect(result).toBeNull();
     });
@@ -41,7 +38,6 @@ describe('imageUtils', () => {
       mockLaunchImageLibrary.mockImplementation((_options, callback) => {
         callback({ assets: [mockAsset] });
       });
-
       const result = await pickImage();
       expect(result).toEqual({
         uri: 'file://test.jpg',
@@ -60,14 +56,8 @@ describe('imageUtils', () => {
         width: 800,
         height: 600,
       });
-
       const result = await compressImage('file://test.jpg');
-      expect(result).toEqual({
-        uri: 'file://compressed.jpg',
-        size: 512,
-        width: 800,
-        height: 600,
-      });
+      expect(result).toEqual({ uri: 'file://compressed.jpg', size: 512, width: 800, height: 600 });
     });
   });
 });

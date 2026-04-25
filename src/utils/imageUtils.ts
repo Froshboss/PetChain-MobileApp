@@ -25,18 +25,12 @@ export const pickImage = async (): Promise<ImagePickerResult | null> => {
   try {
     return new Promise((resolve) => {
       launchImageLibrary(
-        {
-          mediaType: 'photo',
-          quality: 0.8,
-          maxWidth: 2000,
-          maxHeight: 2000,
-        },
+        { mediaType: 'photo', quality: 0.8, maxWidth: 2000, maxHeight: 2000 },
         (response) => {
           if (response.didCancel || response.errorMessage || !response.assets?.[0]) {
             resolve(null);
             return;
           }
-
           const asset = response.assets[0];
           resolve({
             uri: asset.uri ?? '',
@@ -66,7 +60,6 @@ export const compressImage = async (uri: string): Promise<CompressedImage> => {
       false,
       { mode: 'contain' },
     );
-
     return {
       uri: result.uri,
       size: result.size || 0,
@@ -75,12 +68,7 @@ export const compressImage = async (uri: string): Promise<CompressedImage> => {
     };
   } catch (error) {
     console.error('Image compression error:', error);
-    return {
-      uri,
-      size: 0,
-      width: 800,
-      height: 600,
-    };
+    return { uri, size: 0, width: 800, height: 600 };
   }
 };
 
@@ -97,7 +85,6 @@ export const generateThumbnail = async (uri: string): Promise<string> => {
       false,
       { mode: 'cover' },
     );
-
     return result.uri;
   } catch (error) {
     console.error('Thumbnail generation error:', error);
@@ -121,9 +108,7 @@ export const uploadToStorage = async (
     const response = await fetch('/api/upload/pet-photo', {
       method: 'POST',
       body: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
 
     if (!response.ok) {
@@ -131,10 +116,7 @@ export const uploadToStorage = async (
     }
 
     const result = await response.json();
-    return {
-      url: result.url,
-      thumbnailUrl: result.thumbnailUrl,
-    };
+    return { url: result.url, thumbnailUrl: result.thumbnailUrl };
   } catch (error) {
     console.error('Upload error:', error);
     throw new Error('Failed to upload image');
