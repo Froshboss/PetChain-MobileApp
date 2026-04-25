@@ -1,8 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
 import config from '../config';
-import { getToken } from './authService';
-import certPinning from './certPinning';
+import { setupInterceptors } from '../middleware/apiInterceptors';
 
 // --- Circuit Breaker ---
 type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
@@ -46,6 +45,8 @@ const delay = (attempt: number) =>
   new Promise<void>(resolve => setTimeout(resolve, BASE_DELAY_MS * 2 ** attempt));
 
 // --- Axios instance ---
+// Use pinned axios instance when possible. The pinning helper will attempt to
+// provide pins from config and secure storage; it also supports refreshing pins.
 let apiClient: AxiosInstance = axios.create({
   baseURL: config.api.baseUrl,
   timeout: config.api.timeoutMs,
@@ -55,51 +56,7 @@ let apiClient: AxiosInstance = axios.create({
   },
 });
 
-async function createClient(): Promise<AxiosInstance> {
-  const pins = await certPinning.loadPins();
-  try {
-    const client = axios.create({
-      baseURL: config.api.baseUrl,
-      timeout: config.api.timeoutMs,
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      // @ts-expect-error custom field for native ssl pinning adapters
-      sslPinning: pins.length ? { certs: pins } : undefined,
-    } as any);
-    return client;
-  } catch {
-    return axios.create({
-      baseURL: config.api.baseUrl,
-      timeout: config.api.timeoutMs,
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-    });
-  }
-}
-
-function attachAuthInterceptor(client: AxiosInstance) {
-  client.interceptors.request.use(async (requestConfig) => {
-    const token = await getToken();
-    if (token) {
-      requestConfig.headers = requestConfig.headers ?? {};
-      requestConfig.headers.Authorization = `Bearer ${token}`;
-    }
-    return requestConfig;
-  });
-}
-
-attachAuthInterceptor(apiClient);
-createClient().then((c) => {
-  apiClient = c;
-  attachAuthInterceptor(apiClient);
-}).catch(() => {
-  apiClient = axios.create({ baseURL: config.api.baseUrl });
-  attachAuthInterceptor(apiClient);
-});
+setupInterceptors(apiClient);
 
 // --- Resilient request wrapper ---
 export async function resilientRequest<T>(
