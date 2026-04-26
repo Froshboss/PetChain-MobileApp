@@ -6,6 +6,7 @@ import React from 'react';
 import type { RootStackParamList, MainTabParamList, PetStackParamList } from './types';
 import { DEEP_LINK_PREFIX } from './types';
 import type { Pet } from '../models/Pet';
+import MedicalRecordShareScreen from '../screens/MedicalRecordShareScreen';
 import AuthNavigator from '../screens/AuthNavigator';
 import EmergencyContactsScreen from '../screens/EmergencyContactsScreen';
 import ManualEntryScreen from '../screens/ManualEntryScreen';
@@ -49,6 +50,15 @@ function PetNavigator() {
             ownerId={route.params?.ownerId}
             onBack={() => navigation.goBack()}
             onSaved={() => navigation.goBack()}
+          />
+        )}
+      </PetStack.Screen>
+      <PetStack.Screen name="MedicalRecordShare" options={{ title: 'Share Record' }}>
+        {({ route, navigation }) => (
+          <MedicalRecordShareScreen
+            petId={route.params.petId}
+            recordId={route.params.recordId}
+            onBack={() => navigation.goBack()}
           />
         )}
       </PetStack.Screen>
