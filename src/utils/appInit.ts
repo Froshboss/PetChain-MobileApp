@@ -1,5 +1,6 @@
-import { startNetworkMonitoring } from './networkMonitor';
+import { networkMonitor } from './networkMonitor';
 import { requestPermissions } from '../services/notificationService';
+import { offlineQueue } from '../services/offlineQueue';
 
 export interface InitResult {
   ready: boolean;
@@ -12,7 +13,9 @@ export interface InitResult {
  */
 async function runCriticalInit(): Promise<void> {
   // Network monitor is lightweight — start it synchronously
-  startNetworkMonitoring();
+  networkMonitor.startNetworkMonitoring();
+  // Initialize offline queue (also seeds online state)
+  await offlineQueue.initialize();
 }
 
 /**
