@@ -24,6 +24,7 @@ import {
 } from "../services/medicationService";
 import { scheduleMedicationReminder } from "../services/notificationService";
 import { useSecureScreen } from "../utils/secureScreen";
+import { formatLocalDate, formatLocalTime } from "../utils/dateLocale";
 
 type Tab = "list" | "daily" | "weekly";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -44,12 +45,6 @@ const EMPTY_FORM: Omit<Medication, "id"> = {
   notes: "",
 };
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString();
-}
 function todayDates(): Date[] {
   return [new Date()];
 }
@@ -189,7 +184,7 @@ const MedicationScreen: React.FC = () => {
           {item.dosage} · every {item.frequency}h
         </Text>
         <Text style={styles.medDetail}>
-          Started: {formatDate(item.startDate)}
+          Started: {formatLocalDate(item.startDate)}
         </Text>
         <Text style={styles.medDetail}>Pet ID: {item.petId}</Text>
         {item.instructions ? (
@@ -212,7 +207,7 @@ const MedicationScreen: React.FC = () => {
           </Text>
         ) : null}
         {item.endDate ? (
-          <Text style={styles.medDetail}>Ends: {formatDate(item.endDate)}</Text>
+          <Text style={styles.medDetail}>Ends: {formatLocalDate(item.endDate)}</Text>
         ) : null}
         {item.remainingPills !== undefined && (
           <Text style={[styles.medDetail, lowStock && styles.lowStock]}>
@@ -222,7 +217,7 @@ const MedicationScreen: React.FC = () => {
         )}
         {item.refillDate ? (
           <Text style={styles.medDetail}>
-            Refill by: {formatDate(item.refillDate)}
+            Refill by: {formatLocalDate(item.refillDate)}
           </Text>
         ) : null}
         <View style={styles.doseActions}>
@@ -267,7 +262,7 @@ const MedicationScreen: React.FC = () => {
                     key={`${med.id}-${time.toISOString()}`}
                     style={[styles.slotRow, taken && styles.slotTaken]}
                   >
-                    <Text style={styles.slotTime}>{formatTime(time)}</Text>
+                    <Text style={styles.slotTime}>{formatLocalTime(time)}</Text>
                     <Text style={styles.slotName}>
                       {med.name} · {med.dosage}
                     </Text>
