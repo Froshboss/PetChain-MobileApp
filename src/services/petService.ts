@@ -2,7 +2,13 @@ import axios from 'axios';
 
 import apiClient from './apiClient';
 import { parseQRCodeData } from './qrCodeService';
-import { pickImage, compressImage, generateThumbnail, uploadToStorage } from '../utils/imageUtils';
+import { logError } from '../utils/errorLogger';
+import {
+  pickImage,
+  compressImage,
+  generateThumbnail,
+  uploadToStorage,
+} from '../utils/imageUtils';
 
 export interface PetOwnerSummary {
   id: string;
@@ -80,7 +86,7 @@ function unwrapApiData<T>(payload: ApiResponse<T> | T): T {
   return payload as T;
 }
 
-function toPetServiceError(error: unknown): PetServiceError {
+function toPetServiceError(error: unknown, context?: Record<string, any>): PetServiceError {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
     const responseBody = error.response?.data as
@@ -98,22 +104,48 @@ function toPetServiceError(error: unknown): PetServiceError {
       responseBody?.code ||
       (status ? `HTTP_${status}` : 'NETWORK_ERROR');
 
-    return new PetServiceError(message, code, status, error.response?.data);
+    const finalError = new PetServiceError(message, code, status, error.response?.data);
+
+    logError(finalError, {
+      service: 'petService',
+      action: 'api_error',
+      status,
+      ...context,
+    });
+
+    return finalError;
   }
 
   if (error instanceof PetServiceError) {
+    logError(error, {
+      service: 'petService',
+      action: 'known_error',
+      ...context,
+    });
     return error;
   }
 
   if (error instanceof Error) {
-    return new PetServiceError(error.message, 'UNKNOWN_ERROR');
+    const finalError = new PetServiceError(error.message, 'UNKNOWN_ERROR');
+
+    logError(finalError, {
+      service: 'petService',
+      action: 'unknown_error',
+      ...context,
+    });
+
+    return finalError;
   }
 
-  return new PetServiceError('Unexpected pet service error', 'UNKNOWN_ERROR');
-}
+  const finalError = new PetServiceError('Unexpected pet service error', 'UNKNOWN_ERROR');
 
-function _replacePathParam(template: string, key: string, value: string): string {
-  return template.replace(`:${key}`, encodeURIComponent(value));
+  logError(finalError, {
+    service: 'petService',
+    action: 'unexpected_error',
+    ...context,
+  });
+
+  return finalError;
 }
 
 function extractPetIdFromQrScan(scanData: string): string | null {
@@ -132,19 +164,25 @@ function extractPetIdFromQrScan(scanData: string): string | null {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// API METHODS
+// ─────────────────────────────────────────────────────────────
+
 export async function getAllPets(): Promise<Pet[]> {
   try {
     const response = await apiClient.get<ApiResponse<Pet[]> | Pet[]>(PETS_ENDPOINT);
     return unwrapApiData(response.data);
   } catch (error) {
-    throw toPetServiceError(error);
+    throw toPetServiceError(error, { action: 'get_all_pets' });
   }
 }
 
 export async function getPetById(petId: string): Promise<Pet> {
   const normalizedPetId = petId.trim();
   if (!normalizedPetId) {
-    throw new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
+    const err = new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
+    logError(err, { service: 'petService', action: 'get_pet_by_id_validation' });
+    throw err;
   }
 
   try {
@@ -152,14 +190,16 @@ export async function getPetById(petId: string): Promise<Pet> {
     const response = await apiClient.get<ApiResponse<Pet> | Pet>(endpoint);
     return unwrapApiData(response.data);
   } catch (error) {
-    throw toPetServiceError(error);
+    throw toPetServiceError(error, { action: 'get_pet_by_id', petId: normalizedPetId });
   }
 }
 
 export async function getPetByQRCode(qrCode: string): Promise<Pet> {
   const scannedValue = qrCode.trim();
   if (!scannedValue) {
-    throw new PetServiceError('QR code is required', 'INVALID_QR_CODE');
+    const err = new PetServiceError('QR code is required', 'INVALID_QR_CODE');
+    logError(err, { service: 'petService', action: 'qr_validation' });
+    throw err;
   }
 
   try {
@@ -175,7 +215,10 @@ export async function getPetByQRCode(qrCode: string): Promise<Pet> {
       }
     }
 
-    throw toPetServiceError(error);
+    throw toPetServiceError(error, {
+      action: 'get_pet_by_qr',
+      qrCode: scannedValue,
+    });
   }
 }
 
@@ -184,14 +227,16 @@ export async function createPet(data: CreatePetInput): Promise<Pet> {
     const response = await apiClient.post<ApiResponse<Pet> | Pet>(PETS_ENDPOINT, data);
     return unwrapApiData(response.data);
   } catch (error) {
-    throw toPetServiceError(error);
+    throw toPetServiceError(error, { action: 'create_pet' });
   }
 }
 
 export async function updatePet(petId: string, data: UpdatePetInput): Promise<Pet> {
   const normalizedPetId = petId.trim();
   if (!normalizedPetId) {
-    throw new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
+    const err = new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
+    logError(err, { service: 'petService', action: 'update_validation' });
+    throw err;
   }
 
   try {
@@ -199,21 +244,23 @@ export async function updatePet(petId: string, data: UpdatePetInput): Promise<Pe
     const response = await apiClient.put<ApiResponse<Pet> | Pet>(endpoint, data);
     return unwrapApiData(response.data);
   } catch (error) {
-    throw toPetServiceError(error);
+    throw toPetServiceError(error, { action: 'update_pet', petId: normalizedPetId });
   }
 }
 
 export async function deletePet(petId: string): Promise<void> {
   const normalizedPetId = petId.trim();
   if (!normalizedPetId) {
-    throw new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
+    const err = new PetServiceError('Pet ID is required', 'INVALID_PET_ID');
+    logError(err, { service: 'petService', action: 'delete_validation' });
+    throw err;
   }
 
   try {
     const endpoint = `${PETS_ENDPOINT}/${encodeURIComponent(normalizedPetId)}`;
     await apiClient.delete<ApiResponse<null> | null>(endpoint);
   } catch (error) {
-    throw toPetServiceError(error);
+    throw toPetServiceError(error, { action: 'delete_pet', petId: normalizedPetId });
   }
 }
 
@@ -224,17 +271,20 @@ export async function uploadPetPhoto(petId: string): Promise<string | null> {
 
     const compressed = await compressImage(imageResult.uri);
     const thumbnailUri = await generateThumbnail(imageResult.uri);
-    
+
     const uploadResult = await uploadToStorage(compressed.uri, petId, thumbnailUri);
-    
-    await updatePet(petId, { 
+
+    await updatePet(petId, {
       photoUrl: uploadResult.url,
-      thumbnailUrl: uploadResult.thumbnailUrl 
+      thumbnailUrl: uploadResult.thumbnailUrl,
     });
-    
+
     return uploadResult.url;
   } catch (error) {
-    throw toPetServiceError(error);
+    throw toPetServiceError(error, {
+      action: 'upload_pet_photo',
+      petId,
+    });
   }
 }
 
