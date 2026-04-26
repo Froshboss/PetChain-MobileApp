@@ -5,6 +5,7 @@ import React from 'react';
 
 import type { RootStackParamList, MainTabParamList, PetStackParamList } from './types';
 import { DEEP_LINK_PREFIX } from './types';
+import analyticsService from '../services/analyticsService';
 import type { Pet } from '../models/Pet';
 import AuthNavigator from '../screens/AuthNavigator';
 import EmergencyContactsScreen from '../screens/EmergencyContactsScreen';
@@ -109,8 +110,17 @@ const linking: LinkingOptions<RootStackParamList> = {
 
 // ─── Root Navigator ───────────────────────────────────────────────────────────
 export default function AppNavigator() {
+  const navRef = React.useRef<Parameters<typeof NavigationContainer>[0] & { getCurrentRoute?: () => { name?: string } | undefined }>(null);
+
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer
+      ref={navRef as React.Ref<never>}
+      linking={linking}
+      onStateChange={() => {
+        const route = (navRef.current as { getCurrentRoute?: () => { name?: string } | undefined } | null)?.getCurrentRoute?.();
+        if (route?.name) analyticsService.screenView(route.name);
+      }}
+    >
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="Onboarding">
           {({ navigation }) => (
