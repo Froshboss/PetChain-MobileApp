@@ -1,5 +1,6 @@
 import { startNetworkMonitoring } from './networkMonitor';
 import { requestPermissions } from '../services/notificationService';
+import { runMigrations } from '../migrations/migrationRunner';
 
 export interface InitResult {
   ready: boolean;
@@ -13,6 +14,13 @@ export interface InitResult {
 async function runCriticalInit(): Promise<void> {
   // Network monitor is lightweight — start it synchronously
   startNetworkMonitoring();
+
+  // Run any pending data migrations before the UI renders
+  const result = await runMigrations();
+  if (!result.success) {
+    // Log but do not crash — app can still function on the last good version
+    console.warn('[migrations] failed:', result.error);
+  }
 }
 
 /**
