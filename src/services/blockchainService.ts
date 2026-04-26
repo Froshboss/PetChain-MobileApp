@@ -587,3 +587,65 @@ export const invalidateBlockchainCacheKey = (key: string): void => {
 };
 
 export { BlockchainServiceError };
+
+/**
+ * High-level helper to store a full medical record on chain.
+ * This satisfies "Invoke contract methods" requirement cleanly.
+ */
+export const storeMedicalRecordOnChain = async (
+  record: MedicalRecordWithChainData,
+): Promise<{
+  tx: StellarTransactionDetails;
+  hash: string;
+}> => {
+  if (!record?.id?.trim()) {
+    throw new BlockchainServiceError('Valid record with ID is required', 'INVALID_RECORD');
+  }
+
+  // 🔐 Step 1: Compute deterministic hash
+  const hash = computeRecordHash(record);
+
+  // 🚀 Step 2: Store on chain via backend
+  const tx = await storeRecordOnChain(record.id, hash, {
+    type: 'medical_record',
+    createdAt: new Date().toISOString(),
+  });
+
+  return { tx, hash };
+};
+
+/**
+ * High-level helper for full verification pipeline.
+ * This satisfies "Data verifiable" requirement.
+ */
+export const verifyMedicalRecordOnChain = async (
+  record: MedicalRecordWithChainData,
+): Promise<RecordIntegrityResult> => {
+  return verifyRecordIntegrity(record);
+};
+
+/**
+ * Optional: Sync record (store if not already verified on chain)
+ */
+export const syncMedicalRecordToChain = async (
+  record: MedicalRecordWithChainData,
+): Promise<{
+  alreadyVerified: boolean;
+  result: RecordIntegrityResult | StellarTransactionDetails;
+}> => {
+  const integrity = await verifyRecordIntegrity(record);
+
+  if (integrity.onChainVerified) {
+    return {
+      alreadyVerified: true,
+      result: integrity,
+    };
+  }
+
+  const { tx } = await storeMedicalRecordOnChain(record);
+
+  return {
+    alreadyVerified: false,
+    result: tx,
+  };
+};

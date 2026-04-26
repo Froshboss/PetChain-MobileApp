@@ -1,5 +1,11 @@
 import axios, { type AxiosResponse } from 'axios';
 
+import {
+  storeMedicalRecordOnChain,
+  verifyMedicalRecordOnChain,
+  type MedicalRecordWithChainData,
+} from './blockchainService';
+
 // Types
 export interface MedicalRecord {
   id: string;
@@ -77,7 +83,10 @@ const handleApiError = (error: any): never => {
   throw new MedicalRecordError('Network error', 'NETWORK_ERROR');
 };
 
-// Fetch medical records with optional filtering
+// =======================
+// 📥 FETCH FUNCTIONS
+// =======================
+
 export const getMedicalRecords = async (
   petId: string,
   filters?: RecordFilters,
@@ -104,7 +113,6 @@ export const getMedicalRecords = async (
   }
 };
 
-// Fetch vaccination history
 export const getVaccinationHistory = async (petId: string): Promise<Vaccination[]> => {
   if (!petId) {
     throw new MedicalRecordError('Pet ID is required', 'INVALID_PET_ID');
@@ -119,7 +127,6 @@ export const getVaccinationHistory = async (petId: string): Promise<Vaccination[
   }
 };
 
-// Fetch treatment history
 export const getTreatmentHistory = async (petId: string): Promise<Treatment[]> => {
   if (!petId) {
     throw new MedicalRecordError('Pet ID is required', 'INVALID_PET_ID');
@@ -131,5 +138,52 @@ export const getTreatmentHistory = async (petId: string): Promise<Treatment[]> =
   } catch (error) {
     if (error instanceof MedicalRecordError) throw error;
     return handleApiError(error);
+  }
+};
+
+// =======================
+// 🆕 CREATE + BLOCKCHAIN
+// =======================
+
+export const createMedicalRecord = async (
+  petId: string,
+  recordData: Omit<MedicalRecord, 'id' | 'createdAt' | 'petId'>,
+): Promise<MedicalRecord> => {
+  if (!petId) {
+    throw new MedicalRecordError('Pet ID is required', 'INVALID_PET_ID');
+  }
+
+  try {
+    // 🧾 Save to backend
+    const response: AxiosResponse<MedicalRecord> = await axios.post(
+      `${API_BASE_URL}/pets/${petId}/medical-records`,
+      recordData,
+    );
+
+    const record = response.data;
+
+    // 🔗 Store on blockchain
+    try {
+      await storeMedicalRecordOnChain(record as MedicalRecordWithChainData);
+    } catch (blockchainError) {
+      console.error('Blockchain storage failed:', blockchainError);
+    }
+
+    return record;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+// =======================
+// 🔍 VERIFICATION
+// =======================
+
+export const verifyMedicalRecord = async (record: MedicalRecord) => {
+  try {
+    return await verifyMedicalRecordOnChain(record as MedicalRecordWithChainData);
+  } catch (error) {
+    console.error('Verification failed:', error);
+    throw error;
   }
 };
