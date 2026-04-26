@@ -80,42 +80,20 @@ export function getDateDifference(
 }
 
 /**
- * Get relative time string (e.g., "2 days ago")
+ * Get relative time string (e.g., "2 days ago" / "hace 2 días")
  */
-export function getRelativeTime(date: Date | string): string {
+export function getRelativeTime(date: Date | string, locale = 'en-US'): string {
   const parsed = toDate(date);
-  const now = new Date();
+  const diffMs = parsed.getTime() - Date.now();
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
 
-  const diffMs = now.getTime() - parsed.getTime();
-  const isFuture = diffMs < 0;
-
-  const absDiff = Math.abs(diffMs);
-
-  const seconds = Math.floor(absDiff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  let value: number;
-  let unit: string;
-
-  if (days > 0) {
-    value = days;
-    unit = 'day';
-  } else if (hours > 0) {
-    value = hours;
-    unit = 'hour';
-  } else if (minutes > 0) {
-    value = minutes;
-    unit = 'minute';
-  } else {
-    value = seconds;
-    unit = 'second';
-  }
-
-  const plural = value !== 1 ? 's' : '';
-
-  return isFuture ? `in ${value} ${unit}${plural}` : `${value} ${unit}${plural} ago`;
+  const abs = Math.abs(diffMs);
+  if (abs < 60_000) return rtf.format(Math.round(diffMs / 1000), 'second');
+  if (abs < 3_600_000) return rtf.format(Math.round(diffMs / 60_000), 'minute');
+  if (abs < 86_400_000) return rtf.format(Math.round(diffMs / 3_600_000), 'hour');
+  if (abs < 2_592_000_000) return rtf.format(Math.round(diffMs / 86_400_000), 'day');
+  if (abs < 31_536_000_000) return rtf.format(Math.round(diffMs / 2_592_000_000), 'month');
+  return rtf.format(Math.round(diffMs / 31_536_000_000), 'year');
 }
 
 /**
