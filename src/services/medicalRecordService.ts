@@ -154,7 +154,7 @@ export const createMedicalRecord = async (
   }
 
   try {
-    // 🧾 Save to backend
+    // Save to backend first
     const response: AxiosResponse<MedicalRecord> = await axios.post(
       `${API_BASE_URL}/pets/${petId}/medical-records`,
       recordData,
@@ -162,7 +162,7 @@ export const createMedicalRecord = async (
 
     const record = response.data;
 
-    // 🔗 Store on blockchain
+    // Then best-effort blockchain write
     try {
       await storeMedicalRecordOnChain(record as MedicalRecordWithChainData);
     } catch (blockchainError) {
@@ -179,11 +179,38 @@ export const createMedicalRecord = async (
 // 🔍 VERIFICATION
 // =======================
 
-export const verifyMedicalRecord = async (record: MedicalRecord) => {
+export const verifyMedicalRecord = async (
+  record: MedicalRecord,
+) => {
   try {
     return await verifyMedicalRecordOnChain(record as MedicalRecordWithChainData);
   } catch (error) {
     console.error('Verification failed:', error);
     throw error;
   }
+};
+
+// Collect all searchable string values from a record (all fields)
+const extractSearchableText = (record: MedicalRecord): string => {
+  const parts: string[] = [];
+  const collect = (val: unknown) => {
+    if (typeof val === 'string') parts.push(val.toLowerCase());
+    else if (Array.isArray(val)) val.forEach(collect);
+    else if (val && typeof val === 'object') Object.values(val).forEach(collect);
+  };
+  collect(record);
+  return parts.join(' ');
+};
+
+// Search medical records by text across all fields
+export const searchMedicalRecords = async (
+  petId: string,
+  query: string,
+): Promise<MedicalRecord[]> => {
+  if (!petId) throw new MedicalRecordError('Pet ID is required', 'INVALID_PET_ID');
+  if (!query.trim()) return [];
+
+  const { data } = await getMedicalRecords(petId, { limit: 1000 });
+  const q = query.trim().toLowerCase();
+  return data.filter((record) => extractSearchableText(record).includes(q));
 };

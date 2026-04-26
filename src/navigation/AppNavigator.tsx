@@ -5,7 +5,9 @@ import React from 'react';
 
 import type { RootStackParamList, MainTabParamList, PetStackParamList } from './types';
 import { DEEP_LINK_PREFIX } from './types';
+import analyticsService from '../services/analyticsService';
 import type { Pet } from '../models/Pet';
+import MedicalRecordSearchScreen from '../screens/MedicalRecordSearchScreen';
 import AuthNavigator from '../screens/AuthNavigator';
 import EmergencyContactsScreen from '../screens/EmergencyContactsScreen';
 import ManualEntryScreen from '../screens/ManualEntryScreen';
@@ -13,6 +15,7 @@ import MedicationScreen from '../screens/MedicationScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import PetDetailScreen from '../screens/PetDetailScreen';
 import PetFormScreen from '../screens/PetFormScreen';
+import PetHealthMetricsScreen from '../screens/PetHealthMetricsScreen';
 import PetListScreen from '../screens/PetListScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import QRScannerScreen from '../screens/QRScannerScreen';
@@ -39,6 +42,18 @@ function PetNavigator() {
             petId={route.params.petId}
             onBack={() => navigation.goBack()}
             onEdit={(pet: Pet) => navigation.navigate('PetForm', { pet })}
+            onHealthMetrics={(petId, petName) =>
+              navigation.navigate('PetHealthMetrics', { petId, petName })
+            }
+          />
+        )}
+      </PetStack.Screen>
+      <PetStack.Screen name="PetHealthMetrics" options={{ title: 'Health metrics' }}>
+        {({ route, navigation }) => (
+          <PetHealthMetricsScreen
+            petId={route.params.petId}
+            petName={route.params.petName ?? 'Pet'}
+            onBack={() => navigation.goBack()}
           />
         )}
       </PetStack.Screen>
@@ -49,6 +64,27 @@ function PetNavigator() {
             ownerId={route.params?.ownerId}
             onBack={() => navigation.goBack()}
             onSaved={() => navigation.goBack()}
+          />
+        )}
+      </PetStack.Screen>
+      <PetStack.Screen name="MedicalRecordSearch" options={{ title: 'Search Records' }}>
+        {({ route, navigation }) => (
+          <MedicalRecordSearchScreen
+            petId={route.params.petId}
+            onBack={() => navigation.goBack()}
+          />
+        )}
+      </PetStack.Screen>
+      <PetStack.Screen name="NotificationPreferences" options={{ title: 'Notification Preferences' }}>
+        {({ navigation }) => (
+          <NotificationPreferencesScreen onBack={() => navigation.goBack()} />
+        )}
+      </PetStack.Screen>
+      <PetStack.Screen name="DeleteAccount" options={{ title: 'Delete Account' }}>
+        {({ navigation }) => (
+          <DeleteAccountScreen
+            onBack={() => navigation.goBack()}
+            onDeleted={() => navigation.getParent()?.getParent()?.reset({ index: 0, routes: [{ name: 'Auth' }] })}
           />
         )}
       </PetStack.Screen>
@@ -93,6 +129,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             screens: {
               PetListScreen: 'pets',
               PetDetail: 'pets/:petId',
+              PetHealthMetrics: 'pets/:petId/health',
               PetForm: 'pets/form/:petId?',
             },
           },
@@ -109,8 +146,17 @@ const linking: LinkingOptions<RootStackParamList> = {
 
 // ─── Root Navigator ───────────────────────────────────────────────────────────
 export default function AppNavigator() {
+  const navRef = React.useRef<Parameters<typeof NavigationContainer>[0] & { getCurrentRoute?: () => { name?: string } | undefined }>(null);
+
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer
+      ref={navRef as React.Ref<never>}
+      linking={linking}
+      onStateChange={() => {
+        const route = (navRef.current as { getCurrentRoute?: () => { name?: string } | undefined } | null)?.getCurrentRoute?.();
+        if (route?.name) analyticsService.screenView(route.name);
+      }}
+    >
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="Onboarding">
           {({ navigation }) => (
