@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 
 import { errBody } from './response';
+import analyticsRouter from './routes/analytics';
 import appointmentsRouter from './routes/appointments';
 import medicalRecordsRouter from './routes/medicalRecords';
 import medicationsRouter from './routes/medications';
@@ -18,6 +19,7 @@ export function createApp(): Express {
     res.json({ ok: true, service: 'petchain-api', timestamp: new Date().toISOString() });
   });
 
+  api.use('/analytics', analyticsRouter);
   api.use('/users', usersRouter);
   api.use('/pets', petsRouter);
   api.use('/medical-records', medicalRecordsRouter);
