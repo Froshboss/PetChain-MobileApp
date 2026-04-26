@@ -12,6 +12,7 @@ import {
 import petService, { type Pet } from "../services/petService";
 import { getPhoto } from "../utils/petPhotoStore";
 import { useSecureScreen } from "../utils/secureScreen";
+import { formatLocalDate, formatRelativeTime } from "../utils/dateLocale";
 
 interface Props {
   petId: string;
@@ -67,12 +68,10 @@ const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit, onHealthMetri
     { label: "Breed", value: pet.breed },
     {
       label: "Date of Birth",
-      value: pet.dateOfBirth
-        ? new Date(pet.dateOfBirth).toLocaleDateString()
-        : undefined,
+      value: pet.dateOfBirth ? formatLocalDate(pet.dateOfBirth) : undefined,
     },
     { label: "Microchip ID", value: pet.microchipId },
-    { label: "Added", value: new Date(pet.createdAt).toLocaleDateString() },
+    { label: "Added", value: formatRelativeTime(pet.createdAt) },
   ];
 
   return (
