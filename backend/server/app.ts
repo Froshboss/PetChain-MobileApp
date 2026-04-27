@@ -28,6 +28,11 @@ export function createApp(): Express {
 
   app.use('/api', api);
 
+  app.use((err: any, _req: any, res: any, _next: any) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json(errBody('INTERNAL_ERROR', err.message || 'An unexpected error occurred'));
+  });
+
   app.use((_req, res) => {
     res.status(404).json(errBody('NOT_FOUND', 'Route not found'));
   });
