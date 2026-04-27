@@ -18,10 +18,10 @@ interface Props {
   petId: string;
   onBack: () => void;
   onEdit: (pet: Pet) => void;
-  onHealthMetrics: (petId: string, petName: string) => void;
+  onHealthDashboard: (petId: string, petName: string) => void;
 }
 
-const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit, onHealthMetrics }) => {
+const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit, onHealthDashboard }) => {
   useSecureScreen();
 
   const [pet, setPet] = useState<Pet | null>(null);
@@ -111,12 +111,12 @@ const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit, onHealthMetri
 
         <TouchableOpacity
           style={styles.healthBtn}
-          onPress={() => onHealthMetrics(petId, pet.name)}
+          onPress={() => onHealthDashboard(petId, pet.name)}
           accessibilityRole="button"
-          accessibilityLabel="Health metrics"
-          accessibilityHint="Track weight, temperature, and activity over time"
+          accessibilityLabel="Health Dashboard"
+          accessibilityHint="View health overview, upcoming appointments, and medications"
         >
-          <Text style={styles.healthBtnText}>Health metrics</Text>
+          <Text style={styles.healthBtnText}>Health Dashboard</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} accessibilityRole="button" accessibilityLabel="Delete pet" accessibilityHint={`Deletes ${pet.name}`}>

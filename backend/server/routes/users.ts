@@ -1,5 +1,6 @@
 import express from 'express';
 
+import { authenticateJWT, authorizeRoles, type AuthenticatedRequest } from '../../middleware/auth';
 import { UserRole } from '../../models/UserRole';
 import { ok, sendError } from '../response';
 import { userRepository, type DBUser } from '../../src/repositories/userRepository';
@@ -18,25 +19,13 @@ function sanitize(u: DBUser) {
   };
 }
 
-async function resolveUserFromAuth(authHeader: string | undefined): Promise<DBUser | null> {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7).trim();
-  if (!token) return null;
-  if (token.startsWith('mock-')) {
-    const id = token.slice('mock-'.length);
-    return await userRepository.findById(id);
-  }
-  const users = await userRepository.findAll();
-  return users[0] ?? null;
-}
-
-router.get('/me', async (req, res) => {
-  const user = await resolveUserFromAuth(req.headers.authorization);
-  if (!user) return sendError(res, 401, 'UNAUTHORIZED', 'Missing or invalid Authorization header');
+router.get('/me', authenticateJWT, (req: AuthenticatedRequest, res) => {
+  const user = store.users.get(req.user!.id);
+  if (!user) return sendError(res, 404, 'NOT_FOUND', 'User not found');
   return res.json(ok(sanitize(user)));
 });
 
-router.get('/', async (req, res) => {
+router.get('/', authenticateJWT, authorizeRoles(UserRole.ADMIN), (req, res) => {
   const role = req.query.role as string | undefined;
   const search = (req.query.search as string | undefined)?.toLowerCase();
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -74,8 +63,8 @@ router.get('/', async (req, res) => {
   });
 });
 
-router.get('/:id', async (req, res) => {
-  const user = await userRepository.findById(req.params.id);
+router.get('/:id', authenticateJWT, (req, res) => {
+  const user = store.users.get(req.params.id);
   if (!user) return sendError(res, 404, 'NOT_FOUND', 'User not found');
   return res.json(ok(sanitize(user)));
 });
@@ -104,24 +93,30 @@ router.post('/', async (req, res) => {
   return res.status(201).json(ok(sanitize(user), 'User created'));
 });
 
-router.put('/:id', async (req, res) => {
-  const user = await userRepository.findById(req.params.id);
+router.put('/:id', authenticateJWT, (req: AuthenticatedRequest, res) => {
+  const user = store.users.get(req.params.id);
   if (!user) return sendError(res, 404, 'NOT_FOUND', 'User not found');
   
-  const { name, phone, role, isEmailVerified } = req.body;
-  const updates: any = {};
-  if (name !== undefined) updates.name = String(name);
-  if (phone !== undefined) updates.phone = String(phone);
-  if (role !== undefined) updates.role = role as UserRole;
-  if (isEmailVerified !== undefined) updates.is_email_verified = Boolean(isEmailVerified);
+  // Only admin or the user themselves can update
+  if (req.user!.role !== UserRole.ADMIN && req.user!.id !== req.params.id) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to update this user');
+  }
 
-  const next = await userRepository.update(user.id, updates);
-  return res.json(ok(sanitize(next!), 'User updated'));
+  const { name, phone, role, isEmailVerified } = req.body as Partial<StoredUser>;
+  const next: StoredUser = {
+    ...user,
+    ...(name !== undefined ? { name: String(name) } : {}),
+    ...(phone !== undefined ? { phone: String(phone) } : {}),
+    ...(role !== undefined && req.user!.role === UserRole.ADMIN ? { role: role as UserRole } : {}),
+    ...(isEmailVerified !== undefined && req.user!.role === UserRole.ADMIN ? { isEmailVerified: Boolean(isEmailVerified) } : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  store.users.set(user.id, next);
+  return res.json(ok(sanitize(next), 'User updated'));
 });
 
-router.delete('/:id', async (req, res) => {
-  const deleted = await userRepository.delete(req.params.id);
-  if (!deleted) {
+router.delete('/:id', authenticateJWT, authorizeRoles(UserRole.ADMIN), (req, res) => {
+  if (!store.users.delete(req.params.id)) {
     return sendError(res, 404, 'NOT_FOUND', 'User not found');
   }
   return res.json(ok(null, 'User deleted'));

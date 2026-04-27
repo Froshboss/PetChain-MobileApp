@@ -1,5 +1,7 @@
 import express from 'express';
 
+import { authenticateJWT, type AuthenticatedRequest } from '../../middleware/auth';
+import { UserRole } from '../../models/UserRole';
 import { ok, sendError } from '../response';
 import { petRepository } from '../../src/repositories/petRepository';
 import { userRepository } from '../../src/repositories/userRepository';
@@ -48,9 +50,16 @@ function medicalToMobileRow(r: StoredMedicalRecord) {
   };
 }
 
-router.get('/owner/:ownerId', async (req, res) => {
-  const pets = await petRepository.findByOwnerId(req.params.ownerId);
-  const list = await Promise.all(pets.map(toPetResponse));
+// All pets routes require authentication
+router.use(authenticateJWT);
+
+router.get('/owner/:ownerId', (req: AuthenticatedRequest, res) => {
+  // Only admin or the owner themselves can see their pets
+  if (req.user!.role !== UserRole.ADMIN && req.user!.id !== req.params.ownerId) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to view these pets');
+  }
+
+  const list = [...store.pets.values()].filter((p) => p.ownerId === req.params.ownerId).map(toPetResponse);
   return res.json(ok(list));
 });
 
@@ -67,9 +76,16 @@ router.get('/qr/:qrCode', async (req, res) => {
   return res.json(ok(await toPetResponse(pet)));
 });
 
-router.get('/:petId/medical-records', (req, res) => {
-  // Keeping medical records on in-memory store for now as specified in the partial refactor plan
+router.get('/:petId/medical-records', (req: AuthenticatedRequest, res) => {
   const { petId } = req.params;
+  const pet = store.pets.get(petId);
+  if (!pet) return sendError(res, 404, 'NOT_FOUND', 'Pet not found');
+
+  // Only admin, vet, or the owner can see medical records
+  if (req.user!.role === UserRole.OWNER && req.user!.id !== pet.ownerId) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to view these medical records');
+  }
+
   const type = req.query.type as string | undefined;
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
@@ -91,32 +107,49 @@ router.get('/:petId/medical-records', (req, res) => {
   });
 });
 
-router.get('/', async (req, res) => {
+router.get('/', (req: AuthenticatedRequest, res) => {
   const ownerId = req.query.ownerId as string | undefined;
-  let pets;
-  if (ownerId) {
-    pets = await petRepository.findByOwnerId(ownerId);
-  } else {
-    pets = await petRepository.findAll();
+  
+  // If ownerId is provided, filter. Otherwise, only admin/vet can see all pets.
+  if (!ownerId && req.user!.role === UserRole.OWNER) {
+    return sendError(res, 403, 'FORBIDDEN', 'OwnerId parameter is required for pet owners');
   }
-  const list = await Promise.all(pets.map(toPetResponse));
-  return res.json(ok(list));
+  
+  if (ownerId && req.user!.role === UserRole.OWNER && req.user!.id !== ownerId) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to view these pets');
+  }
+
+  let list = [...store.pets.values()];
+  if (ownerId) list = list.filter((p) => p.ownerId === ownerId);
+  return res.json(ok(list.map(toPetResponse)));
 });
 
-router.get('/:id', async (req, res) => {
-  const pet = await petRepository.findById(req.params.id);
+router.get('/:id', (req: AuthenticatedRequest, res) => {
+  const pet = store.pets.get(req.params.id);
   if (!pet) return sendError(res, 404, 'NOT_FOUND', 'Pet not found');
-  return res.json(ok(await toPetResponse(pet)));
+
+  // Only admin, vet, or owner can see pet details
+  if (req.user!.role === UserRole.OWNER && req.user!.id !== pet.ownerId) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to view this pet');
+  }
+
+  return res.json(ok(toPetResponse(pet)));
 });
 
-router.post('/', async (req, res) => {
-  const { name, species, breed, dateOfBirth, microchipId, photoUrl, thumbnailUrl, ownerId } = req.body;
+router.post('/', (req: AuthenticatedRequest, res) => {
+  const { name, species, breed, dateOfBirth, microchipId, photoUrl, thumbnailUrl, ownerId } = req.body as Partial<
+    StoredPet & { thumbnailUrl?: string }
+  >;
   if (!name?.trim() || !species?.trim() || !ownerId?.trim()) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'name, species, and ownerId are required');
   }
   
-  const user = await userRepository.findById(ownerId.trim());
-  if (!user) {
+  // Only admin or the owner themselves can create a pet for that owner
+  if (req.user!.role !== UserRole.ADMIN && req.user!.id !== ownerId) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to create a pet for this owner');
+  }
+
+  if (!store.users.get(ownerId.trim())) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'ownerId must reference an existing user');
   }
 
@@ -136,29 +169,50 @@ router.post('/', async (req, res) => {
   return res.status(201).json(ok(await toPetResponse(pet), 'Pet created'));
 });
 
-router.put('/:id', async (req, res) => {
-  const pet = await petRepository.findById(req.params.id);
+router.put('/:id', (req: AuthenticatedRequest, res) => {
+  const pet = store.pets.get(req.params.id);
   if (!pet) return sendError(res, 404, 'NOT_FOUND', 'Pet not found');
-  
-  const body = req.body;
-  const updates: any = {};
-  if (body.name !== undefined) updates.name = String(body.name);
-  if (body.species !== undefined) updates.species = String(body.species);
-  if (body.breed !== undefined) updates.breed = body.breed ? String(body.breed) : null;
-  if (body.dateOfBirth !== undefined) updates.date_of_birth = body.dateOfBirth ? new Date(body.dateOfBirth) : null;
-  if (body.microchipId !== undefined) updates.microchip_id = body.microchipId ? String(body.microchipId) : null;
-  if (body.photoUrl !== undefined) updates.photo_url = body.photoUrl ? String(body.photoUrl) : null;
-  if (body.thumbnailUrl !== undefined) updates.thumbnail_url = body.thumbnailUrl ? String(body.thumbnailUrl) : null;
-  if (body.ownerId !== undefined) updates.owner_id = String(body.ownerId);
 
-  const next = await petRepository.update(req.params.id, updates);
-  return res.json(ok(await toPetResponse(next), 'Pet updated'));
+  // Only admin or the owner can update the pet
+  if (req.user!.role !== UserRole.ADMIN && req.user!.id !== pet.ownerId) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to update this pet');
+  }
+
+  const body = req.body as Partial<StoredPet>;
+  const t = new Date().toISOString();
+  const next: StoredPet = {
+    ...pet,
+    ...(body.name !== undefined ? { name: String(body.name) } : {}),
+    ...(body.species !== undefined ? { species: String(body.species) } : {}),
+    ...(body.breed !== undefined ? { breed: body.breed ? String(body.breed) : undefined } : {}),
+    ...(body.dateOfBirth !== undefined ? { dateOfBirth: body.dateOfBirth ? String(body.dateOfBirth) : undefined } : {}),
+    ...(body.microchipId !== undefined
+      ? { microchipId: body.microchipId ? String(body.microchipId) : undefined }
+      : {}),
+    ...(body.photoUrl !== undefined ? { photoUrl: body.photoUrl ? String(body.photoUrl) : undefined } : {}),
+    ...(body.thumbnailUrl !== undefined
+      ? { thumbnailUrl: body.thumbnailUrl ? String(body.thumbnailUrl) : undefined }
+      : {}),
+    // Only admin can change owner
+    ...(body.ownerId !== undefined && req.user!.role === UserRole.ADMIN ? { ownerId: String(body.ownerId) } : {}),
+    updatedAt: t,
+  };
+  store.pets.set(pet.id, next);
+  return res.json(ok(toPetResponse(next), 'Pet updated'));
 });
 
-router.delete('/:id', async (req, res) => {
-  const deleted = await petRepository.delete(req.params.id);
-  if (!deleted) {
-    return sendError(res, 404, 'NOT_FOUND', 'Pet not found');
+router.delete('/:id', (req: AuthenticatedRequest, res) => {
+  const pet = store.pets.get(req.params.id);
+  if (!pet) return sendError(res, 404, 'NOT_FOUND', 'Pet not found');
+
+  // Only admin or the owner can delete the pet
+  if (req.user!.role !== UserRole.ADMIN && req.user!.id !== pet.ownerId) {
+    return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to delete this pet');
+  }
+
+  store.pets.delete(req.params.id);
+  for (const u of store.users.values()) {
+    u.pets = u.pets.filter((p) => p.id !== req.params.id);
   }
   return res.json(ok(null, 'Pet deleted'));
 });
