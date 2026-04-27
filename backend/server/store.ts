@@ -61,6 +61,12 @@ export interface StoredAppointment {
   cancellationReason?: string;
 }
 
+export interface StoredBackup {
+  userId: string;
+  createdAt: string;
+  payload: Record<string, unknown>;
+}
+
 /** Matches `backend/services/medicationService` client expectations. */
 export interface StoredMedication {
   id: string;
@@ -157,11 +163,14 @@ function seed() {
 
 const state = seed();
 
+const backups = new Map<string, StoredBackup>();
+
 export function newId(): string {
   return randomUUID();
 }
 
 export const store = {
   ...state,
+  backups,
   newId,
 };

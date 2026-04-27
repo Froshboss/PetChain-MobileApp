@@ -171,6 +171,10 @@ export async function addDoseLog(log: any): Promise<void> {
   );
 }
 
+export async function clearDoseLogs(): Promise<void> {
+  await executeSql(`DELETE FROM dose_logs`);
+}
+
 export async function getHealthMetricsByPetId(petId: string): Promise<any[]> {
   const res = await executeSql(
     `SELECT data FROM health_metrics WHERE pet_id = ? ORDER BY recorded_at ASC`,

@@ -8,11 +8,12 @@ import {
   Alert,
   StatusBar,
   Platform,
-  PermissionsAndroid,
   Linking,
 } from 'react-native';
 
 import PermissionRationaleModal from '../components/PermissionRationaleModal';
+import { recordScreenLoad } from '../services/performanceService';
+import { requestAndroidPermission } from '../services/permissionService';
 import { useSecureScreen } from '../utils/secureScreen';
 
 interface QRScannerScreenProps {
@@ -33,10 +34,20 @@ const QRScannerScreen: React.FC<QRScannerScreenProps> = ({
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const loadStartedAt = React.useRef(Date.now());
+  const loadRecorded = React.useRef(false);
+
+  const recordLoadOnce = () => {
+    if (!loadRecorded.current) {
+      loadRecorded.current = true;
+      void recordScreenLoad('QRScanner', Date.now() - loadStartedAt.current);
+    }
+  };
 
   useEffect(() => {
     if (Platform.OS === 'android') {
       setShowRationale(true);
+      recordLoadOnce();
     } else {
       void requestCameraPermission();
     }
@@ -45,16 +56,15 @@ const QRScannerScreen: React.FC<QRScannerScreenProps> = ({
   const requestCameraPermission = async () => {
     try {
       if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
+        const granted = await requestAndroidPermission('android.permission.CAMERA', {
           title: 'Camera Permission',
           message: 'PetChain needs camera permission to scan QR codes',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
         });
-        const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
-        setHasPermission(isGranted);
-        if (!isGranted) setPermissionDenied(true);
+        setHasPermission(granted);
+        if (!granted) setPermissionDenied(true);
       } else {
         setHasPermission(true);
       }
@@ -62,6 +72,7 @@ const QRScannerScreen: React.FC<QRScannerScreenProps> = ({
       console.warn('Camera permission error:', err);
       setHasPermission(false);
     }
+    recordLoadOnce();
   };
 
   const _handleBarCodeRead = (event: { data: string; type: string }) => {
@@ -160,6 +171,7 @@ const QRScannerScreen: React.FC<QRScannerScreenProps> = ({
         onDeny={() => {
           setShowRationale(false);
           setHasPermission(false);
+          recordLoadOnce();
         }}
       />
       <View style={styles.header}>

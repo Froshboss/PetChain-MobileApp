@@ -1,6 +1,8 @@
 import { getItem, setItem, removeItem } from './localDB';
 import Geolocation from '@react-native-community/geolocation';
-import { Linking, Platform, PermissionsAndroid } from 'react-native';
+import { Linking, Platform } from 'react-native';
+
+import { requestAndroidPermission } from './permissionService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -139,16 +141,12 @@ class EmergencyService {
 
   async requestLocationPermission(): Promise<boolean> {
     if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'PetChain needs your location to find nearby vet clinics.',
-          buttonPositive: 'Allow',
-          buttonNegative: 'Deny',
-        },
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
+      return requestAndroidPermission('android.permission.ACCESS_FINE_LOCATION', {
+        title: 'Location Permission',
+        message: 'PetChain needs your location to find nearby vet clinics.',
+        buttonPositive: 'Allow',
+        buttonNegative: 'Deny',
+      });
     }
     return true; // iOS prompts automatically via Geolocation.getCurrentPosition
   }
