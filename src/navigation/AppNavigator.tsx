@@ -11,6 +11,7 @@ import AuthNavigator from '../screens/AuthNavigator';
 import EmergencyContactsScreen from '../screens/EmergencyContactsScreen';
 import ManualEntryScreen from '../screens/ManualEntryScreen';
 import MedicalRecordSearchScreen from '../screens/MedicalRecordSearchScreen';
+import MedicalRecordViewerScreen from '../screens/MedicalRecordViewerScreen';
 import MedicationScreen from '../screens/MedicationScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import PetDetailScreen from '../screens/PetDetailScreen';
@@ -72,6 +73,15 @@ function PetNavigator() {
         {({ route, navigation }) => (
           <MedicalRecordSearchScreen
             petId={route.params.petId}
+            onBack={() => navigation.goBack()}
+          />
+        )}
+      </PetStack.Screen>
+      <PetStack.Screen name="MedicalRecordViewer" options={{ title: 'Medical Records' }}>
+        {({ route, navigation }) => (
+          <MedicalRecordViewerScreen
+            petId={route.params.petId}
+            petName={route.params.petName}
             onBack={() => navigation.goBack()}
           />
         )}
