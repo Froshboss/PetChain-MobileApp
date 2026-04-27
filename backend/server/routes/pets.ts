@@ -3,20 +3,32 @@ import express from 'express';
 import { authenticateJWT, type AuthenticatedRequest } from '../../middleware/auth';
 import { UserRole } from '../../models/UserRole';
 import { ok, sendError } from '../response';
-import { store, type StoredMedicalRecord, type StoredPet } from '../store';
+import { petRepository } from '../../src/repositories/petRepository';
+import { userRepository } from '../../src/repositories/userRepository';
+import { type StoredMedicalRecord, type StoredPet, store } from '../store';
 
 const router = express.Router();
 
-function ownerSummary(ownerId: string) {
-  const u = store.users.get(ownerId);
+async function ownerSummary(ownerId: string) {
+  const u = await userRepository.findById(ownerId);
   if (!u) return undefined;
   return { id: u.id, name: u.name, email: u.email };
 }
 
-function toPetResponse(p: StoredPet) {
+async function toPetResponse(p: any) {
   return {
-    ...p,
-    owner: ownerSummary(p.ownerId),
+    id: p.id,
+    name: p.name,
+    species: p.species,
+    breed: p.breed,
+    dateOfBirth: p.date_of_birth,
+    microchipId: p.microchip_id,
+    photoUrl: p.photo_url,
+    thumbnailUrl: p.thumbnail_url,
+    ownerId: p.owner_id,
+    createdAt: p.created_at,
+    updatedAt: p.updated_at,
+    owner: await ownerSummary(p.owner_id),
   };
 }
 
@@ -51,15 +63,17 @@ router.get('/owner/:ownerId', (req: AuthenticatedRequest, res) => {
   return res.json(ok(list));
 });
 
-router.get('/qr/:qrCode', (req, res) => {
+router.get('/qr/:qrCode', async (req, res) => {
   const raw = decodeURIComponent(req.params.qrCode);
-  let pet = store.pets.get(raw);
+  let pet = await petRepository.findById(raw);
   if (!pet && raw.includes('pet/')) {
     const tail = raw.split('pet/').pop()?.trim();
-    if (tail) pet = store.pets.get(tail) ?? store.pets.get(decodeURIComponent(tail));
+    if (tail) {
+      pet = (await petRepository.findById(tail)) || (await petRepository.findById(decodeURIComponent(tail)));
+    }
   }
   if (!pet) return sendError(res, 404, 'NOT_FOUND', 'Pet not found for QR code');
-  return res.json(ok(toPetResponse(pet)));
+  return res.json(ok(await toPetResponse(pet)));
 });
 
 router.get('/:petId/medical-records', (req: AuthenticatedRequest, res) => {
@@ -138,28 +152,21 @@ router.post('/', (req: AuthenticatedRequest, res) => {
   if (!store.users.get(ownerId.trim())) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'ownerId must reference an existing user');
   }
-  const t = new Date().toISOString();
+
   const id = store.newId();
-  const row: StoredPet = {
+  const pet = await petRepository.create({
     id,
     name: name.trim(),
     species: species.trim(),
     breed: breed?.trim(),
-    dateOfBirth: dateOfBirth?.trim(),
-    microchipId: microchipId?.trim(),
-    photoUrl: photoUrl?.trim(),
-    thumbnailUrl: thumbnailUrl?.trim(),
-    ownerId: ownerId.trim(),
-    createdAt: t,
-    updatedAt: t,
-  };
-  store.pets.set(id, row);
-  const owner = store.users.get(row.ownerId);
-  if (owner) {
-    owner.pets = [...owner.pets.filter((p) => p.id !== id), { id, name: row.name }];
-    owner.updatedAt = t;
-  }
-  return res.status(201).json(ok(toPetResponse(row), 'Pet created'));
+    date_of_birth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+    microchip_id: microchipId?.trim(),
+    photo_url: photoUrl?.trim(),
+    thumbnail_url: thumbnailUrl?.trim(),
+    owner_id: ownerId.trim(),
+  });
+
+  return res.status(201).json(ok(await toPetResponse(pet), 'Pet created'));
 });
 
 router.put('/:id', (req: AuthenticatedRequest, res) => {

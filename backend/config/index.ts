@@ -35,6 +35,12 @@ const config = {
     maxRetries: CONSTANTS.MAX_RETRY_ATTEMPTS,
   },
 
+  database: {
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/petchain',
+    poolSize: Number(process.env.DB_POOL_SIZE) || 20,
+    idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT) || 30000,
+  },
+
   app: {
     name: process.env.APP_NAME || 'PetChain',
     version: Constants.expoConfig?.version || '1.0.0',

@@ -26,6 +26,20 @@ function getJson(port: number, path: string, token?: string): Promise<{ status: 
   });
 }
 
+jest.mock('../../src/repositories/petRepository', () => ({
+  petRepository: {
+    findAll: jest.fn().mockResolvedValue([]),
+    findById: jest.fn().mockResolvedValue(null),
+    findByOwnerId: jest.fn().mockResolvedValue([]),
+  },
+}));
+
+jest.mock('../../src/repositories/userRepository', () => ({
+  userRepository: {
+    findById: jest.fn().mockResolvedValue(null),
+  },
+}));
+
 describe('REST API smoke', () => {
   let server: http.Server;
   let port: number;

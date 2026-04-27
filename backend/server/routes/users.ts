@@ -3,13 +3,20 @@ import express from 'express';
 import { authenticateJWT, authorizeRoles, type AuthenticatedRequest } from '../../middleware/auth';
 import { UserRole } from '../../models/UserRole';
 import { ok, sendError } from '../response';
-import { store, type StoredUser } from '../store';
+import { userRepository, type DBUser } from '../../src/repositories/userRepository';
+import { store } from '../store';
 
 const router = express.Router();
 
-function sanitize(u: StoredUser) {
-  const { passwordHash: _p, ...rest } = u;
-  return rest;
+function sanitize(u: DBUser) {
+  const { password_hash: _p, ...rest } = u;
+  return {
+    ...rest,
+    isEmailVerified: u.is_email_verified,
+    lastLoginAt: u.last_login_at,
+    createdAt: u.created_at,
+    updatedAt: u.updated_at,
+  };
 }
 
 router.get('/me', authenticateJWT, (req: AuthenticatedRequest, res) => {
@@ -24,19 +31,21 @@ router.get('/', authenticateJWT, authorizeRoles(UserRole.ADMIN), (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
 
-  let list = [...store.users.values()].map(sanitize);
-  if (role) list = list.filter((u) => u.role === role);
+  let users = await userRepository.findAll();
+  
+  if (role) users = users.filter((u) => u.role === role);
   if (search) {
-    list = list.filter(
+    users = users.filter(
       (u) =>
         u.email.toLowerCase().includes(search) ||
         u.name.toLowerCase().includes(search) ||
         u.id.toLowerCase().includes(search),
     );
   }
-  const total = list.length;
+  
+  const total = users.length;
   const start = (page - 1) * limit;
-  const slice = list.slice(start, start + limit);
+  const slice = users.slice(start, start + limit).map(sanitize);
   const totalPages = Math.ceil(total / limit) || 1;
 
   return res.json({
@@ -60,34 +69,28 @@ router.get('/:id', authenticateJWT, (req, res) => {
   return res.json(ok(sanitize(user)));
 });
 
-router.post('/', (req, res) => {
-  const { email, name, phone, role } = req.body as {
-    email?: string;
-    name?: string;
-    phone?: string;
-    role?: string;
-  };
+router.post('/', async (req, res) => {
+  const { email, name, phone, role } = req.body;
   if (!email?.trim() || !name?.trim()) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'email and name are required');
   }
-  if ([...store.users.values()].some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
+  
+  const existing = await userRepository.findByEmail(email.trim().toLowerCase());
+  if (existing) {
     return sendError(res, 409, 'CONFLICT', 'Email already registered');
   }
-  const t = new Date().toISOString();
+
   const id = store.newId();
-  const row: StoredUser = {
+  const user = await userRepository.create({
     id,
     email: email.trim(),
     name: name.trim(),
     phone: phone?.trim(),
     role: (role as UserRole) || UserRole.OWNER,
-    pets: [],
-    createdAt: t,
-    updatedAt: t,
-    isEmailVerified: false,
-  };
-  store.users.set(id, row);
-  return res.status(201).json(ok(sanitize(row), 'User created'));
+    is_email_verified: false,
+  });
+
+  return res.status(201).json(ok(sanitize(user), 'User created'));
 });
 
 router.put('/:id', authenticateJWT, (req: AuthenticatedRequest, res) => {
