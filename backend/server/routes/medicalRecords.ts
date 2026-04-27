@@ -43,7 +43,7 @@ router.get('/pet/:petId', (req: AuthenticatedRequest, res) => {
 });
 
 router.get('/', (req: AuthenticatedRequest, res) => {
-  const { petId, vetId, type } = req.query as { petId?: string; vetId?: string; type?: string };
+  const { petId, vetId, type, startDate, endDate, diagnosis } = req.query as { petId?: string; vetId?: string; type?: string; startDate?: string; endDate?: string; diagnosis?: string };
   
   // Owners must provide petId
   if (req.user!.role === UserRole.OWNER && !petId) {
@@ -61,6 +61,9 @@ router.get('/', (req: AuthenticatedRequest, res) => {
   if (petId) list = list.filter((r) => r.petId === petId);
   if (vetId) list = list.filter((r) => r.vetId === vetId);
   if (type) list = list.filter((r) => r.type === type);
+  if (startDate) list = list.filter((r) => new Date(r.visitDate) >= new Date(startDate));
+  if (endDate) list = list.filter((r) => new Date(r.visitDate) <= new Date(endDate));
+  if (diagnosis) list = list.filter((r) => r.diagnosis && r.diagnosis.toLowerCase().includes(diagnosis.toLowerCase()));
   list.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
   return res.json(ok(list.map(toApiRecord)));
 });
