@@ -8,6 +8,7 @@ import medicalRecordsRouter from './routes/medicalRecords';
 import medicationsRouter from './routes/medications';
 import petsRouter from './routes/pets';
 import usersRouter from './routes/users';
+import importRouter from './routes/import';
 
 export function createApp(): Express {
   const app = express();
@@ -25,8 +26,14 @@ export function createApp(): Express {
   api.use('/medical-records', medicalRecordsRouter);
   api.use('/appointments', appointmentsRouter);
   api.use('/medications', medicationsRouter);
+  api.use('/import', importRouter);
 
   app.use('/api', api);
+
+  app.use((err: any, _req: any, res: any, _next: any) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json(errBody('INTERNAL_ERROR', err.message || 'An unexpected error occurred'));
+  });
 
   app.use((_req, res) => {
     res.status(404).json(errBody('NOT_FOUND', 'Route not found'));

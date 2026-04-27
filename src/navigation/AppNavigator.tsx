@@ -15,6 +15,7 @@ import MedicationScreen from '../screens/MedicationScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import PetDetailScreen from '../screens/PetDetailScreen';
 import PetFormScreen from '../screens/PetFormScreen';
+import PetHealthDashboardScreen from '../screens/PetHealthDashboardScreen';
 import PetHealthMetricsScreen from '../screens/PetHealthMetricsScreen';
 import PetListScreen from '../screens/PetListScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -43,9 +44,19 @@ function PetNavigator() {
             petId={route.params.petId}
             onBack={() => navigation.goBack()}
             onEdit={(pet: Pet) => navigation.navigate('PetForm', { pet })}
-            onHealthMetrics={(petId, petName) =>
-              navigation.navigate('PetHealthMetrics', { petId, petName })
+            onHealthDashboard={(petId, petName) =>
+              navigation.navigate('PetHealthDashboard', { petId, petName })
             }
+          />
+        )}
+      </PetStack.Screen>
+      <PetStack.Screen name="PetHealthDashboard" options={{ title: 'Health Dashboard' }}>
+        {({ route, navigation }) => (
+          <PetHealthDashboardScreen
+            petId={route.params.petId}
+            petName={route.params.petName ?? 'Pet'}
+            onBack={() => navigation.goBack()}
+            onOpenMetrics={() => navigation.navigate('PetHealthMetrics', { petId: route.params.petId, petName: route.params.petName })}
           />
         )}
       </PetStack.Screen>
@@ -141,6 +152,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             screens: {
               PetListScreen: 'pets',
               PetDetail: 'pets/:petId',
+              PetHealthDashboard: 'pets/:petId/dashboard',
               PetHealthMetrics: 'pets/:petId/health',
               PetForm: 'pets/form/:petId?',
             },

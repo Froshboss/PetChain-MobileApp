@@ -299,6 +299,7 @@ export interface ListMedicalRecordsRequest extends PaginationParams {
   type?: string;
   startDate?: string;
   endDate?: string;
+  diagnosis?: string;
 }
 
 /**
