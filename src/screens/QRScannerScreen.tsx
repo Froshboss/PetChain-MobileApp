@@ -63,6 +63,7 @@ const QRScannerScreen: React.FC<QRScannerScreenProps> = ({
       console.warn('Camera permission error:', err);
       setHasPermission(false);
     }
+    recordLoadOnce();
   };
 
   const handleBarCodeScanned = ({ data }: BarCodeScannerResult) => {
@@ -197,6 +198,7 @@ const QRScannerScreen: React.FC<QRScannerScreenProps> = ({
         onDeny={() => {
           setShowRationale(false);
           setHasPermission(false);
+          recordLoadOnce();
         }}
       />
       <View style={styles.header}>
