@@ -19,9 +19,10 @@ interface Props {
   onBack: () => void;
   onEdit: (pet: Pet) => void;
   onHealthDashboard: (petId: string, petName: string) => void;
+  onShare?: (petId: string, petName: string) => void;
 }
 
-const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit, onHealthDashboard }) => {
+const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit, onHealthDashboard, onShare }) => {
   useSecureScreen();
 
   const [pet, setPet] = useState<Pet | null>(null);
@@ -119,6 +120,18 @@ const PetDetailScreen: React.FC<Props> = ({ petId, onBack, onEdit, onHealthDashb
           <Text style={styles.healthBtnText}>Health Dashboard</Text>
         </TouchableOpacity>
 
+        {onShare && (
+          <TouchableOpacity
+            style={styles.shareBtn}
+            onPress={() => onShare(petId, pet.name)}
+            accessibilityRole="button"
+            accessibilityLabel="Share pet profile"
+            accessibilityHint={`Share ${pet.name}'s profile via link, social media, or QR code`}
+          >
+            <Text style={styles.shareBtnText}>Share Profile</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} accessibilityRole="button" accessibilityLabel="Delete pet" accessibilityHint={`Deletes ${pet.name}`}>
           <Text style={styles.deleteBtnText}>Delete Pet</Text>
         </TouchableOpacity>
@@ -198,6 +211,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   deleteBtnText: { color: "#e53935", fontWeight: "700", fontSize: 15 },
+  shareBtn: {
+    backgroundColor: "#e8f5e9",
+    borderRadius: 10,
+    padding: 14,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  shareBtnText: { color: "#4CAF50", fontWeight: "700", fontSize: 15 },
 });
 
 export default PetDetailScreen;
