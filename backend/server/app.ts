@@ -4,6 +4,7 @@ import express, { type Express } from 'express';
 import { errBody } from './response';
 import analyticsRouter from './routes/analytics';
 import appointmentsRouter from './routes/appointments';
+import communityRouter from './routes/community';
 import medicalRecordsRouter from './routes/medicalRecords';
 import medicationsRouter from './routes/medications';
 import petsRouter from './routes/pets';
@@ -21,6 +22,7 @@ export function createApp(): Express {
   });
 
   api.use('/analytics', analyticsRouter);
+  api.use('/community', communityRouter);
   api.use('/users', usersRouter);
   api.use('/pets', petsRouter);
   api.use('/medical-records', medicalRecordsRouter);
