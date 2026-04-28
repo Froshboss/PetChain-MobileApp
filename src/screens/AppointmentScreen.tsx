@@ -146,7 +146,7 @@ const AppointmentScreen: React.FC = () => {
 
   // ─── Render helpers ──────────────────────────────────────────────────────────
 
-  const renderItem = ({ item }: { item: Appointment }) => (
+  const renderItem = useCallback(({ item }: { item: Appointment }) => (
     <TouchableOpacity style={styles.card} onPress={() => setDetailAppt(item)}>
       <View style={styles.cardLeft}>
         <Text style={styles.cardTitle}>{item.title}</Text>
@@ -162,7 +162,7 @@ const AppointmentScreen: React.FC = () => {
         </View>
       </View>
     </TouchableOpacity>
-  );
+  ), []);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -202,6 +202,10 @@ const AppointmentScreen: React.FC = () => {
             {tab === 'upcoming' ? 'No upcoming appointments.' : 'No past appointments.'}
           </Text>
         }
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={10}
       />
 
       {/* ── Book Modal ── */}

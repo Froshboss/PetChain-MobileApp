@@ -47,7 +47,7 @@
       "^expo-constants$": "<rootDir>/src/__mocks__/expo-constants.ts",
       "^expo-sqlite$": "<rootDir>/src/__mocks__/expo-sqlite.ts",
       "^expo-notifications$": "<rootDir>/src/__mocks__/expo-notifications.ts",
-      "^@stellar/stellar-sdk$": "<rootDir>/src/__mocks__/@stellar/stellar-sdk.ts"
+      "^expo-secure-store$": "<rootDir>/src/__mocks__/expo-secure-store.ts"
     },
     "collectCoverageFrom": [
       "src/**/*.ts",
