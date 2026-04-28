@@ -11,6 +11,7 @@ import medicationsRouter from './routes/medications';
 import petsRouter from './routes/pets';
 import usersRouter from './routes/users';
 import importRouter from './routes/import';
+import paymentsRouter from './routes/payments';
 
 export function createApp(): Express {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp(): Express {
   api.use('/appointments', appointmentsRouter);
   api.use('/medications', medicationsRouter);
   api.use('/import', importRouter);
+  api.use('/payments', paymentsRouter);
 
   app.use('/api', api);
 
