@@ -1,4 +1,6 @@
+import Constants from 'expo-constants';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -13,31 +15,26 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useTranslation } from 'react-i18next';
 
-import { logout, requestPasswordReset } from '../services/authService';
 import LanguageSelector from '../components/LanguageSelector';
+import type { NotificationPreferences, User } from '../models/User';
 import {
+  disableBiometricAuthentication,
   isBiometricAuthenticationAvailable,
   isBiometricAuthenticationEnabled,
+  logout,
+  requestPasswordReset,
   promptForBiometricSetup,
-  disableBiometricAuthentication,
 } from '../services/authService';
-import { getUserProfile, updateUserProfile } from '../services/userService';
-import type { NotificationPreferences, User } from '../models/User';
+import { getUserProfile, saveUserProfile, updateUserProfile } from '../services/userService';
+import { formatAddress } from '../utils/localeValues';
 
 // ─── App version info ─────────────────────────────────────────────────────────
-// Pulled from expo-constants at runtime; fallback to package values
-let APP_VERSION = '1.0.0';
-let BUILD_NUMBER = '1';
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const Constants = require('expo-constants').default;
-  APP_VERSION = Constants.expoConfig?.version ?? APP_VERSION;
-  BUILD_NUMBER = String(Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode ?? BUILD_NUMBER);
-} catch {
-  // expo-constants unavailable in test/non-expo environments
-}
+// Pulled from expo-constants at runtime; fallback to package values.
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+const BUILD_NUMBER = String(
+  Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode ?? '1',
+);
 
 const TERMS_URL = 'https://petchain.app/terms';
 const PRIVACY_URL = 'https://petchain.app/privacy';
@@ -69,13 +66,14 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, emai
     setLoading(true);
     try {
       await requestPasswordReset(email);
-      Alert.alert(
-        t('changePassword.emailSentTitle'),
-        t('changePassword.emailSentBody'),
-        [{ text: 'OK', onPress: onClose }],
-      );
+      Alert.alert(t('changePassword.emailSentTitle'), t('changePassword.emailSentBody'), [
+        { text: 'OK', onPress: onClose },
+      ]);
     } catch (err) {
-      Alert.alert(t('common.error'), err instanceof Error ? err.message : t('changePassword.failedSend'));
+      Alert.alert(
+        t('common.error'),
+        err instanceof Error ? err.message : t('changePassword.failedSend'),
+      );
     } finally {
       setLoading(false);
     }
@@ -118,6 +116,16 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactRelationship, setContactRelationship] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
@@ -147,7 +155,17 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
         setName(stored.name ?? '');
         setEmail(stored.email ?? '');
         setPhone(stored.phone ?? '');
-        setNotifPrefs(prev => ({ ...prev, ...(stored.notificationPreferences ?? {}) }));
+        setProfilePhoto(stored.profilePhoto ?? '');
+        setStreet(stored.address?.street ?? '');
+        setCity(stored.address?.city ?? '');
+        setState(stored.address?.state ?? '');
+        setPostalCode(stored.address?.postalCode ?? '');
+        setCountry(stored.address?.country ?? '');
+        setContactName(stored.emergencyContact?.name ?? '');
+        setContactPhone(stored.emergencyContact?.phone ?? '');
+        setContactRelationship(stored.emergencyContact?.relationship ?? '');
+        setContactEmail(stored.emergencyContact?.email ?? '');
+        setNotifPrefs((prev) => ({ ...prev, ...(stored.notificationPreferences ?? {}) }));
       }
 
       const available = await isBiometricAuthenticationAvailable();
@@ -161,8 +179,7 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
 
   // ── Profile save ───────────────────────────────────────────────────────────
 
-  const validateEmail = (value: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
   const handleSaveProfile = useCallback(async () => {
     if (!name.trim()) {
@@ -173,19 +190,70 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
       Alert.alert(t('common.error'), t('settings.invalidEmail'));
       return;
     }
+    if (contactEmail.trim() && !validateEmail(contactEmail)) {
+      Alert.alert(t('common.error'), t('settings.invalidEmergencyEmail'));
+      return;
+    }
 
     setProfileSaving(true);
     setProfileSaved(false);
     try {
-      await updateUserProfile({ name: name.trim(), email: email.trim(), phone: phone.trim() });
+      const updates = {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        profilePhoto: profilePhoto.trim(),
+        address: {
+          street: street.trim(),
+          city: city.trim(),
+          state: state.trim(),
+          postalCode: postalCode.trim(),
+          country: country.trim(),
+        },
+        emergencyContact: {
+          name: contactName.trim(),
+          phone: contactPhone.trim(),
+          relationship: contactRelationship.trim(),
+          email: contactEmail.trim(),
+        },
+      };
+
+      const savedProfile = profile
+        ? await updateUserProfile(updates)
+        : await saveUserProfile({
+            id: `user_${Date.now()}`,
+            role: 'owner',
+            ...updates,
+          });
+
+      setProfile(savedProfile);
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
     } catch (err) {
-      Alert.alert(t('common.error'), err instanceof Error ? err.message : t('settings.failedSaveProfile'));
+      Alert.alert(
+        t('common.error'),
+        err instanceof Error ? err.message : t('settings.failedSaveProfile'),
+      );
     } finally {
       setProfileSaving(false);
     }
-  }, [name, email, phone, t]);
+  }, [
+    city,
+    contactEmail,
+    contactName,
+    contactPhone,
+    contactRelationship,
+    country,
+    email,
+    name,
+    phone,
+    postalCode,
+    profile,
+    profilePhoto,
+    state,
+    street,
+    t,
+  ]);
 
   // ── Notification toggle ────────────────────────────────────────────────────
 
@@ -204,28 +272,31 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
         setNotifSaving(false);
       }
     },
-    [notifPrefs],
+    [notifPrefs, t],
   );
 
   // ── Biometric toggle ───────────────────────────────────────────────────────
 
-  const handleBiometricToggle = useCallback(async (value: boolean) => {
-    setBiometricLoading(true);
-    try {
-      if (value) {
-        const success = await promptForBiometricSetup();
-        setBiometricEnabled(success);
-        if (!success) Alert.alert(t('common.error'), t('settings.biometricSetupFailed'));
-      } else {
-        await disableBiometricAuthentication();
-        setBiometricEnabled(false);
+  const handleBiometricToggle = useCallback(
+    async (value: boolean) => {
+      setBiometricLoading(true);
+      try {
+        if (value) {
+          const success = await promptForBiometricSetup();
+          setBiometricEnabled(success);
+          if (!success) Alert.alert(t('common.error'), t('settings.biometricSetupFailed'));
+        } else {
+          await disableBiometricAuthentication();
+          setBiometricEnabled(false);
+        }
+      } catch (err) {
+        Alert.alert('Error', err instanceof Error ? err.message : 'Biometric setup failed.');
+      } finally {
+        setBiometricLoading(false);
       }
-    } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Biometric setup failed.');
-    } finally {
-      setBiometricLoading(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   // ── Logout ─────────────────────────────────────────────────────────────────
 
@@ -247,7 +318,7 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
         },
       },
     ]);
-  }, [onLogout]);
+  }, [onLogout, t]);
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
@@ -295,9 +366,94 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
           keyboardType="phone-pad"
         />
 
-        {profileSaved && (
-          <Text style={styles.successText}>{t('settings.profileSaved')}</Text>
-        )}
+        <Text style={styles.label}>{t('settings.profilePhoto')}</Text>
+        <TextInput
+          style={styles.input}
+          value={profilePhoto}
+          onChangeText={setProfilePhoto}
+          placeholder={t('settings.profilePhotoPlaceholder')}
+          placeholderTextColor="#aaa"
+          autoCapitalize="none"
+        />
+
+        <Text style={styles.label}>{t('settings.address')}</Text>
+        <TextInput
+          style={styles.input}
+          value={street}
+          onChangeText={setStreet}
+          placeholder={t('settings.streetPlaceholder')}
+          placeholderTextColor="#aaa"
+        />
+        <TextInput
+          style={styles.input}
+          value={city}
+          onChangeText={setCity}
+          placeholder={t('settings.cityPlaceholder')}
+          placeholderTextColor="#aaa"
+        />
+        <TextInput
+          style={styles.input}
+          value={state}
+          onChangeText={setState}
+          placeholder={t('settings.statePlaceholder')}
+          placeholderTextColor="#aaa"
+        />
+        <TextInput
+          style={styles.input}
+          value={postalCode}
+          onChangeText={setPostalCode}
+          placeholder={t('settings.postalCodePlaceholder')}
+          placeholderTextColor="#aaa"
+        />
+        <TextInput
+          style={styles.input}
+          value={country}
+          onChangeText={setCountry}
+          placeholder={t('settings.countryPlaceholder')}
+          placeholderTextColor="#aaa"
+        />
+        {formatAddress({ street, city, state, postalCode, country }) ? (
+          <Text style={styles.helperText}>
+            {formatAddress({ street, city, state, postalCode, country })}
+          </Text>
+        ) : null}
+
+        <Text style={styles.label}>{t('settings.emergencyContact')}</Text>
+        <TextInput
+          style={styles.input}
+          value={contactName}
+          onChangeText={setContactName}
+          placeholder={t('settings.contactNamePlaceholder')}
+          placeholderTextColor="#aaa"
+          autoCapitalize="words"
+        />
+        <TextInput
+          style={styles.input}
+          value={contactPhone}
+          onChangeText={setContactPhone}
+          placeholder={t('settings.contactPhonePlaceholder')}
+          placeholderTextColor="#aaa"
+          keyboardType="phone-pad"
+        />
+        <TextInput
+          style={styles.input}
+          value={contactRelationship}
+          onChangeText={setContactRelationship}
+          placeholder={t('settings.contactRelationshipPlaceholder')}
+          placeholderTextColor="#aaa"
+          autoCapitalize="words"
+        />
+        <TextInput
+          style={styles.input}
+          value={contactEmail}
+          onChangeText={setContactEmail}
+          placeholder={t('settings.contactEmailPlaceholder')}
+          placeholderTextColor="#aaa"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        {profileSaved && <Text style={styles.successText}>{t('settings.profileSaved')}</Text>}
 
         <TouchableOpacity
           style={[styles.btn, profileSaving && styles.btnDisabled]}
@@ -333,7 +489,7 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
               <Text style={styles.rowLabel}>{label}</Text>
               <Switch
                 value={Boolean(notifPrefs[key])}
-                onValueChange={v => void handleNotifToggle(key, v)}
+                onValueChange={(v) => void handleNotifToggle(key, v)}
                 trackColor={{ false: '#ddd', true: '#4CAF50' }}
                 thumbColor={Platform.OS === 'android' ? '#fff' : undefined}
                 disabled={notifSaving}
@@ -347,10 +503,7 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
       {/* ── Security Settings ── */}
       <SectionHeader title={t('settings.security')} />
       <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.row}
-          onPress={() => setShowChangePassword(true)}
-        >
+        <TouchableOpacity style={styles.row} onPress={() => setShowChangePassword(true)}>
           <Text style={styles.rowLabel}>{t('settings.changePassword')}</Text>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
@@ -365,7 +518,7 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
               ) : (
                 <Switch
                   value={biometricEnabled}
-                  onValueChange={v => void handleBiometricToggle(v)}
+                  onValueChange={(v) => void handleBiometricToggle(v)}
                   trackColor={{ false: '#ddd', true: '#4CAF50' }}
                   thumbColor={Platform.OS === 'android' ? '#fff' : undefined}
                 />
@@ -394,18 +547,12 @@ const SettingsScreen: React.FC<Props> = ({ onLogout }) => {
           <Text style={styles.rowValue}>{BUILD_NUMBER}</Text>
         </View>
         <RowSeparator />
-        <TouchableOpacity
-          style={styles.row}
-          onPress={() => void Linking.openURL(TERMS_URL)}
-        >
+        <TouchableOpacity style={styles.row} onPress={() => void Linking.openURL(TERMS_URL)}>
           <Text style={styles.rowLabel}>{t('settings.termsOfService')}</Text>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
         <RowSeparator />
-        <TouchableOpacity
-          style={styles.row}
-          onPress={() => void Linking.openURL(PRIVACY_URL)}
-        >
+        <TouchableOpacity style={styles.row} onPress={() => void Linking.openURL(PRIVACY_URL)}>
           <Text style={styles.rowLabel}>{t('settings.privacyPolicy')}</Text>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
@@ -487,6 +634,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 8,
     marginBottom: 4,
+  },
+  helperText: {
+    color: '#4CAF50',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 4,
+    fontStyle: 'italic',
   },
   btn: {
     backgroundColor: '#4CAF50',
