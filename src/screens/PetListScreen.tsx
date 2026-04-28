@@ -39,7 +39,18 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
     void execute();
   }, [execute]);
 
-  const renderItem = ({ item }: { item: Pet }) => (
+  // card: padding 12 top + 12 bottom + avatar 56 + marginBottom 10 = 90
+  const ITEM_HEIGHT = 90;
+  const getItemLayout = useCallback(
+    (_: ArrayLike<Pet> | null | undefined, index: number) => ({
+      length: ITEM_HEIGHT,
+      offset: ITEM_HEIGHT * index,
+      index,
+    }),
+    [],
+  );
+
+  const renderItem = useCallback(({ item }: { item: Pet }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => onSelectPet(item)}
@@ -73,7 +84,7 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
       </View>
       <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>
-  );
+  ), [onSelectPet, offlineStatus?.isOnline]);
 
   return (
     <View style={styles.container}>
@@ -115,17 +126,19 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
           data={pets}
           keyExtractor={(p) => p.id}
           renderItem={renderItem}
+          getItemLayout={getItemLayout}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty} accessibilityLiveRegion="polite">
               No pets yet. Add one!
             </Text>
           }
-          onRefresh={() => {
-            reset();
-            void execute();
-          }}
-          refreshing={retryState.loading}
+          onRefresh={load}
+          refreshing={loading}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={10}
         />
       )}
 
