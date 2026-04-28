@@ -1,5 +1,6 @@
 import { getItem, setItem, removeItem } from '../services/localDB';
-import { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+import { applySchemaMapping } from './schemaMapper';
 
 const ACCESS_TOKEN_KEY = '@access_token';
 const REFRESH_TOKEN_KEY = '@refresh_token';
@@ -10,11 +11,14 @@ interface TokenResponse {
 }
 
 export const setupInterceptors = (apiClient: AxiosInstance): void => {
+  type TimedConfig = InternalAxiosRequestConfig & { metadata?: { startedAt: number } };
+
   // Request: auth token injection
   apiClient.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
       const token = await getItem(ACCESS_TOKEN_KEY);
       if (token) config.headers.Authorization = `Bearer ${token}`;
+      (config as TimedConfig).metadata = { startedAt: Date.now() };
       return config;
     },
     (error: AxiosError) => Promise.reject(error),
@@ -34,9 +38,9 @@ export const setupInterceptors = (apiClient: AxiosInstance): void => {
 
   // Response: logging + error handling + token refresh
   apiClient.interceptors.response.use(
-    (response) => {
+    (response: AxiosResponse) => {
       console.log(`[API] ${response.status} ${response.config.url}`);
-      return response;
+      return applySchemaMapping(response);
     },
     async (error: AxiosError) => {
       const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
@@ -71,6 +75,16 @@ export const setupInterceptors = (apiClient: AxiosInstance): void => {
       const message = error.response
         ? `Request failed with status ${error.response.status}`
         : error.message ?? 'Network error';
+
+      const startedAt = (error.config as TimedConfig | undefined)?.metadata?.startedAt;
+      if (startedAt) {
+        await recordApiTiming(
+          originalRequest?.url ?? 'unknown',
+          originalRequest?.method ?? 'get',
+          Date.now() - startedAt,
+          error.response?.status,
+        );
+      }
       return Promise.reject(new Error(message));
     },
   );

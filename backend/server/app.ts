@@ -3,6 +3,7 @@ import express, { type Express } from 'express';
 
 import { errBody } from './response';
 import analyticsRouter from './routes/analytics';
+import backupsRouter from './routes/backups';
 import appointmentsRouter from './routes/appointments';
 import communityRouter from './routes/community';
 import medicalRecordsRouter from './routes/medicalRecords';
@@ -22,7 +23,7 @@ export function createApp(): Express {
   });
 
   api.use('/analytics', analyticsRouter);
-  api.use('/community', communityRouter);
+  api.use('/backups', backupsRouter);
   api.use('/users', usersRouter);
   api.use('/pets', petsRouter);
   api.use('/medical-records', medicalRecordsRouter);
