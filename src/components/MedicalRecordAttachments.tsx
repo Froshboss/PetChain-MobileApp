@@ -2,7 +2,6 @@ import React from 'react';
 import { Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import type { MedicalDocumentMetadata } from '../models/MedicalRecord';
-import { OptimizedImage } from './OptimizedImage';
 import {
   formatFileSize,
   getAttachmentLabel,
@@ -10,6 +9,7 @@ import {
   isPdfDocument,
   normalizeDocuments,
 } from '../utils/medicalRecordAttachments';
+import { OptimizedImage } from './OptimizedImage';
 
 interface Props {
   documents?: MedicalDocumentMetadata[] | null;

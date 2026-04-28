@@ -12,13 +12,13 @@ import {
   View,
 } from 'react-native';
 
+import MedicalRecordAttachments from '../components/MedicalRecordAttachments';
 import {
   getMedicalRecords,
   searchMedicalRecords,
   type MedicalRecord,
   type RecordFilters,
 } from '../services/medicalRecordService';
-import MedicalRecordAttachments from '../components/MedicalRecordAttachments';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
