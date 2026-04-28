@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -11,8 +10,10 @@ import {
 
 import { HeaderOfflineStatus, useOfflineStatus } from '../components/OfflineIndicator';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { RetryError } from '../components/RetryError';
 import SOSButton from '../components/SOSButton';
 import petService, { type Pet } from '../services/petService';
+import { useRetry } from '../utils/useRetry';
 
 interface Props {
   onSelectPet: (pet: Pet) => void;
@@ -21,24 +22,22 @@ interface Props {
 
 const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
   const [pets, setPets] = useState<Pet[]>([]);
-  const [loading, setLoading] = useState(false);
   const offlineStatus = useOfflineStatus();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await petService.getAllPets();
-      setPets(data);
-    } catch {
-      Alert.alert('Error', 'Failed to load pets.');
-    } finally {
-      setLoading(false);
-    }
+  const loadPets = useCallback(async () => {
+    const data = await petService.getAllPets();
+    setPets(data);
+    return data;
   }, []);
 
+  const [retryState, execute, reset] = useRetry(loadPets, {
+    maxRetries: 3,
+    autoRetry: false,
+  });
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void execute();
+  }, [execute]);
 
   // card: padding 12 top + 12 bottom + avatar 56 + marginBottom 10 = 90
   const ITEM_HEIGHT = 90;
@@ -110,7 +109,17 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
         </View>
       ) : null}
 
-      {loading ? (
+      {retryState.error ? (
+        <RetryError
+          error={retryState.error}
+          onRetry={() => {
+            reset();
+            void execute();
+          }}
+          retryCount={retryState.retryCount}
+          maxRetries={3}
+        />
+      ) : retryState.loading ? (
         <ActivityIndicator style={styles.loader} size="large" color="#4CAF50" />
       ) : (
         <FlatList
@@ -132,7 +141,7 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
           initialNumToRender={10}
         />
       )}
-      
+
       <SOSButton style={styles.floatingSOS} />
     </View>
   );
