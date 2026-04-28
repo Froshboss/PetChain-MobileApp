@@ -169,6 +169,30 @@ const PetHealthMetricsScreen: React.FC<Props> = ({ petId, petName, onBack }) => 
     );
   };
 
+  const renderMetricItem = useCallback(({ item }: { item: HealthMetricEntry }) => (
+    <View style={styles.rowCard}>
+      <View style={styles.rowMain}>
+        <Text style={styles.rowDate}>{new Date(item.recordedAt).toLocaleString()}</Text>
+        <Text style={styles.rowValues}>
+          {item.weightKg !== undefined ? `${item.weightKg} kg` : ""}
+          {item.weightKg !== undefined && (item.temperatureC !== undefined || item.activityLevel) ? " · " : ""}
+          {item.temperatureC !== undefined ? `${item.temperatureC} °C` : ""}
+          {item.temperatureC !== undefined && item.activityLevel ? " · " : ""}
+          {item.activityLevel ? `Activity: ${item.activityLevel}` : ""}
+        </Text>
+        {item.notes ? <Text style={styles.rowNotes}>{item.notes}</Text> : null}
+      </View>
+      <TouchableOpacity
+        onPress={() => confirmDelete(item.id)}
+        style={styles.delTouch}
+        accessibilityRole="button"
+        accessibilityLabel="Delete entry"
+      >
+        <Text style={styles.delText}>✕</Text>
+      </TouchableOpacity>
+    </View>
+  ), [confirmDelete]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -191,29 +215,11 @@ const PetHealthMetricsScreen: React.FC<Props> = ({ petId, petName, onBack }) => 
         extraData={chartTab}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={<Text style={styles.emptyList}>No entries yet. Tap + Log to add weight, temperature, or activity.</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.rowCard}>
-            <View style={styles.rowMain}>
-              <Text style={styles.rowDate}>{new Date(item.recordedAt).toLocaleString()}</Text>
-              <Text style={styles.rowValues}>
-                {item.weightKg !== undefined ? `${item.weightKg} kg` : ""}
-                {item.weightKg !== undefined && (item.temperatureC !== undefined || item.activityLevel) ? " · " : ""}
-                {item.temperatureC !== undefined ? `${item.temperatureC} °C` : ""}
-                {item.temperatureC !== undefined && item.activityLevel ? " · " : ""}
-                {item.activityLevel ? `Activity: ${item.activityLevel}` : ""}
-              </Text>
-              {item.notes ? <Text style={styles.rowNotes}>{item.notes}</Text> : null}
-            </View>
-            <TouchableOpacity
-              onPress={() => confirmDelete(item.id)}
-              style={styles.delTouch}
-              accessibilityRole="button"
-              accessibilityLabel="Delete entry"
-            >
-              <Text style={styles.delText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        renderItem={renderMetricItem}
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={10}
       />
 
       <Modal visible={modalVisible} animationType="slide" transparent>

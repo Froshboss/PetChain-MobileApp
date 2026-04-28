@@ -140,7 +140,7 @@ const EmergencyContactsScreen: React.FC = () => {
     ]);
   };
 
-  const renderContact = ({ item }: { item: EmergencyContact }) => (
+  const renderContact = useCallback(({ item }: { item: EmergencyContact }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.cardInfo}>
@@ -181,9 +181,9 @@ const EmergencyContactsScreen: React.FC = () => {
         </View>
       </View>
     </View>
-  );
+  ), [openEditModal, handleDelete]);
 
-  const renderClinic = ({ item }: { item: VetClinic }) => (
+  const renderClinic = useCallback(({ item }: { item: VetClinic }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.cardInfo}>
@@ -215,7 +215,7 @@ const EmergencyContactsScreen: React.FC = () => {
         </View>
       </View>
     </View>
-  );
+  ), []);
 
   return (
     <View style={styles.container}>
@@ -264,6 +264,10 @@ const EmergencyContactsScreen: React.FC = () => {
             ListEmptyComponent={
               <Text style={styles.empty}>No emergency contacts yet.</Text>
             }
+            removeClippedSubviews
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            initialNumToRender={10}
           />
         )
       ) : (
@@ -277,6 +281,10 @@ const EmergencyContactsScreen: React.FC = () => {
               Tap "Nearby Clinics" to find vets near you.
             </Text>
           }
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={10}
         />
       )}
 

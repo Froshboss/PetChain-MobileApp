@@ -47,8 +47,7 @@
       "^expo-constants$": "<rootDir>/src/__mocks__/expo-constants.ts",
       "^expo-sqlite$": "<rootDir>/src/__mocks__/expo-sqlite.ts",
       "^expo-notifications$": "<rootDir>/src/__mocks__/expo-notifications.ts",
-      "^expo-camera$": "<rootDir>/src/__mocks__/expo-camera.ts",
-      "^expo-barcode-scanner$": "<rootDir>/src/__mocks__/expo-barcode-scanner.ts"
+      "^expo-secure-store$": "<rootDir>/src/__mocks__/expo-secure-store.ts"
     },
     "collectCoverageFrom": [
       "src/**/*.ts",
@@ -64,6 +63,8 @@
     "@react-navigation/bottom-tabs": "6.6.1",
     "@react-navigation/native": "6.1.18",
     "@react-navigation/native-stack": "6.11.0",
+    "@stellar/freighter-api": "^6.0.1",
+    "@stellar/stellar-sdk": "^15.0.1",
     "@types/jsonwebtoken": "^9.0.10",
     "@urql/core": "^5.0.0",
     "axios": "^1.15.2",

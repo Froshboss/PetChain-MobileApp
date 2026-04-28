@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -39,7 +39,7 @@ const MedicalRecordSearchScreen: React.FC<Props> = ({ petId, onBack }) => {
     }
   };
 
-  const renderItem = ({ item }: { item: MedicalRecord }) => (
+  const renderItem = useCallback(({ item }: { item: MedicalRecord }) => (
     <View style={styles.card} accessibilityRole="text">
       <View style={styles.cardRow}>
         <Text style={styles.badge}>{item.type}</Text>
@@ -49,7 +49,7 @@ const MedicalRecordSearchScreen: React.FC<Props> = ({ petId, onBack }) => {
       {item.veterinarian ? <Text style={styles.meta}>Vet: {item.veterinarian}</Text> : null}
       {!offlineStatus?.isOnline ? <Text style={styles.cachedChip}>Cached</Text> : null}
     </View>
-  );
+  ), [offlineStatus?.isOnline]);
 
   return (
     <View style={styles.container}>
@@ -108,6 +108,10 @@ const MedicalRecordSearchScreen: React.FC<Props> = ({ petId, onBack }) => {
               </Text>
             ) : null
           }
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={10}
         />
       )}
     </View>

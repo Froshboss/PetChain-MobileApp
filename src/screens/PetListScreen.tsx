@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -11,8 +10,10 @@ import {
 
 import { HeaderOfflineStatus, useOfflineStatus } from '../components/OfflineIndicator';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { RetryError } from '../components/RetryError';
 import SOSButton from '../components/SOSButton';
 import petService, { type Pet } from '../services/petService';
+import { useRetry } from '../utils/useRetry';
 
 interface Props {
   onSelectPet: (pet: Pet) => void;
@@ -21,26 +22,35 @@ interface Props {
 
 const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
   const [pets, setPets] = useState<Pet[]>([]);
-  const [loading, setLoading] = useState(false);
   const offlineStatus = useOfflineStatus();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await petService.getAllPets();
-      setPets(data);
-    } catch {
-      Alert.alert('Error', 'Failed to load pets.');
-    } finally {
-      setLoading(false);
-    }
+  const loadPets = useCallback(async () => {
+    const data = await petService.getAllPets();
+    setPets(data);
+    return data;
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const [retryState, execute, reset] = useRetry(loadPets, {
+    maxRetries: 3,
+    autoRetry: false,
+  });
 
-  const renderItem = ({ item }: { item: Pet }) => (
+  useEffect(() => {
+    void execute();
+  }, [execute]);
+
+  // card: padding 12 top + 12 bottom + avatar 56 + marginBottom 10 = 90
+  const ITEM_HEIGHT = 90;
+  const getItemLayout = useCallback(
+    (_: ArrayLike<Pet> | null | undefined, index: number) => ({
+      length: ITEM_HEIGHT,
+      offset: ITEM_HEIGHT * index,
+      index,
+    }),
+    [],
+  );
+
+  const renderItem = useCallback(({ item }: { item: Pet }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => onSelectPet(item)}
@@ -74,7 +84,7 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
       </View>
       <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>
-  );
+  ), [onSelectPet, offlineStatus?.isOnline]);
 
   return (
     <View style={styles.container}>
@@ -99,13 +109,24 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
         </View>
       ) : null}
 
-      {loading ? (
+      {retryState.error ? (
+        <RetryError
+          error={retryState.error}
+          onRetry={() => {
+            reset();
+            void execute();
+          }}
+          retryCount={retryState.retryCount}
+          maxRetries={3}
+        />
+      ) : retryState.loading ? (
         <ActivityIndicator style={styles.loader} size="large" color="#4CAF50" />
       ) : (
         <FlatList
           data={pets}
           keyExtractor={(p) => p.id}
           renderItem={renderItem}
+          getItemLayout={getItemLayout}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty} accessibilityLiveRegion="polite">
@@ -114,9 +135,13 @@ const PetListScreen: React.FC<Props> = ({ onSelectPet, onAddPet }) => {
           }
           onRefresh={load}
           refreshing={loading}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={10}
         />
       )}
-      
+
       <SOSButton style={styles.floatingSOS} />
     </View>
   );
