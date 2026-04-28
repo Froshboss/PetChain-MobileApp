@@ -18,6 +18,7 @@ export interface MedicalRecord {
   veterinarian: string;
   notes: string;
   createdAt: string;
+  nextVisitDate?: string;
   documents?: MedicalDocumentMetadata[];
 }
 

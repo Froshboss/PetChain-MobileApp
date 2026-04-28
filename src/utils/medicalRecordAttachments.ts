@@ -2,7 +2,9 @@ import type { MedicalDocumentMetadata, MedicalDocumentType } from '../models/Med
 
 const IMAGE_MIME_PREFIX = 'image/';
 
-export function getMedicalDocumentType(document: Pick<MedicalDocumentMetadata, 'mimeType' | 'name'>): MedicalDocumentType {
+export function getMedicalDocumentType(
+  document: Pick<MedicalDocumentMetadata, 'mimeType' | 'name'>,
+): MedicalDocumentType {
   const mimeType = document.mimeType.toLowerCase();
   const name = document.name.toLowerCase();
 
@@ -40,7 +42,7 @@ export function formatFileSize(sizeBytes?: number): string | null {
   }
 
   const mb = kb / 1024;
-  return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
+  return `${Number.isInteger(mb) ? mb.toFixed(0) : mb.toFixed(mb < 10 ? 1 : 0)} MB`;
 }
 
 export function getAttachmentLabel(document: MedicalDocumentMetadata): string {
@@ -54,6 +56,8 @@ export function getAttachmentLabel(document: MedicalDocumentMetadata): string {
   return 'Document attachment';
 }
 
-export function normalizeDocuments(documents?: MedicalDocumentMetadata[] | null): MedicalDocumentMetadata[] {
+export function normalizeDocuments(
+  documents?: MedicalDocumentMetadata[] | null,
+): MedicalDocumentMetadata[] {
   return [...(documents ?? [])].filter((document) => Boolean(document?.url && document?.name));
 }
