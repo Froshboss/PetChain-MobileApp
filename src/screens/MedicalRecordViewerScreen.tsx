@@ -112,7 +112,7 @@ const MedicalRecordViewerScreen: React.FC<Props> = ({ petId, petName, onBack }) 
 
   // ─── Render helpers ──────────────────────────────────────────────────────────
 
-  const renderItem = ({ item }: { item: MedicalRecord }) => (
+  const renderItem = useCallback(({ item }: { item: MedicalRecord }) => (
     <TouchableOpacity style={styles.card} onPress={() => setDetailRecord(item)}>
       <View style={styles.cardRow}>
         <View style={[styles.typeBadge, typeBadgeColor(item.type)]}>
@@ -127,7 +127,7 @@ const MedicalRecordViewerScreen: React.FC<Props> = ({ petId, petName, onBack }) 
       ) : null}
       {item.veterinarian ? <Text style={styles.cardMeta}>Vet: {item.veterinarian}</Text> : null}
     </TouchableOpacity>
-  );
+  ), []);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -220,6 +220,10 @@ const MedicalRecordViewerScreen: React.FC<Props> = ({ petId, petName, onBack }) 
               {isSearchMode ? `No results for "${searchQuery}".` : 'No records found.'}
             </Text>
           }
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={10}
         />
       )}
 

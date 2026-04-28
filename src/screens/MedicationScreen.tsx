@@ -154,7 +154,7 @@ const MedicationScreen: React.FC = () => {
     );
   };
 
-  const renderMedItem = ({ item }: { item: Medication }) => {
+  const renderMedItem = useCallback(({ item }: { item: Medication }) => {
     const lowStock =
       item.remainingPills !== undefined &&
       item.totalPills !== undefined &&
@@ -236,7 +236,7 @@ const MedicationScreen: React.FC = () => {
         </View>
       </View>
     );
-  };
+  }, [doseLogs, openEdit, handleDelete, handleLogDose]);
 
   const renderSchedule = (dates: Date[]) => (
     <ScrollView style={styles.scheduleContainer}>
@@ -492,6 +492,10 @@ const MedicationScreen: React.FC = () => {
           ListEmptyComponent={
             <Text style={styles.emptyText}>No medications added yet.</Text>
           }
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          initialNumToRender={10}
         />
       )}
       {tab === "daily" && renderSchedule(todayDates())}
