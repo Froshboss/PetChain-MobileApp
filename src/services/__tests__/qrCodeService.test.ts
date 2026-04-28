@@ -1,5 +1,3 @@
-import { describe, it, expect } from 'vitest';
-
 import { generatePetQRCode, parseQRCodeData, validateQRCode } from '../qrCodeService';
 
 // ✅ LOCAL TYPES (no dependency on service exports)

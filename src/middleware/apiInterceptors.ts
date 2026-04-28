@@ -1,6 +1,6 @@
 import { getItem, setItem, removeItem } from '../services/localDB';
-import { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { recordApiTiming } from '../services/performanceService';
+import { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+import { applySchemaMapping } from './schemaMapper';
 
 const ACCESS_TOKEN_KEY = '@access_token';
 const REFRESH_TOKEN_KEY = '@refresh_token';
@@ -38,18 +38,9 @@ export const setupInterceptors = (apiClient: AxiosInstance): void => {
 
   // Response: logging + error handling + token refresh
   apiClient.interceptors.response.use(
-    async (response) => {
+    (response: AxiosResponse) => {
       console.log(`[API] ${response.status} ${response.config.url}`);
-      const startedAt = (response.config as TimedConfig).metadata?.startedAt;
-      if (startedAt) {
-        await recordApiTiming(
-          response.config.url ?? 'unknown',
-          response.config.method ?? 'get',
-          Date.now() - startedAt,
-          response.status,
-        );
-      }
-      return response;
+      return applySchemaMapping(response);
     },
     async (error: AxiosError) => {
       const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
