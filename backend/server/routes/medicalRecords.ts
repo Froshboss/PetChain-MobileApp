@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { authenticateJWT, authorizeRoles, type AuthenticatedRequest } from '../../middleware/auth';
+import type { AuditableRequest } from '../../middleware/auditLog';
 import { UserRole } from '../../models/UserRole';
 import { ok, sendError } from '../response';
 import { store, type StoredMedicalRecord } from '../store';
@@ -39,6 +40,7 @@ router.get('/pet/:petId', (req: AuthenticatedRequest, res) => {
   const list = [...store.medicalRecords.values()]
     .filter((r) => r.petId === petId)
     .map(toApiRecord);
+  (req as AuditableRequest).audit?.('medical_record.accessed', 'medical_record', undefined, { petId });
   return res.json(ok(list));
 });
 
@@ -78,6 +80,7 @@ router.get('/:id', (req: AuthenticatedRequest, res) => {
     return sendError(res, 403, 'FORBIDDEN', 'You do not have permission to view this medical record');
   }
 
+  (req as AuditableRequest).audit?.('medical_record.accessed', 'medical_record', row.id);
   return res.json(ok(toApiRecord(row)));
 });
 
@@ -108,6 +111,7 @@ router.post('/', authorizeRoles(UserRole.ADMIN, UserRole.VET), (req, res) => {
     updatedAt: t,
   };
   store.medicalRecords.set(id, row);
+  (req as AuditableRequest).audit?.('medical_record.created', 'medical_record', id, { petId: petId.trim(), type: String(type) });
   return res.status(201).json(ok(toApiRecord(row), 'Medical record created'));
 });
 
@@ -129,13 +133,15 @@ router.put('/:id', authorizeRoles(UserRole.ADMIN, UserRole.VET), (req, res) => {
     updatedAt: t,
   };
   store.medicalRecords.set(row.id, next);
+  (req as AuditableRequest).audit?.('medical_record.updated', 'medical_record', row.id);
   return res.json(ok(toApiRecord(next), 'Medical record updated'));
 });
 
-router.delete('/:id', authorizeRoles(UserRole.ADMIN, UserRole.VET), (req, res) => {
+router.delete('/:id', authorizeRoles(UserRole.ADMIN, UserRole.VET), (req: AuthenticatedRequest, res) => {
   if (!store.medicalRecords.delete(req.params.id)) {
     return sendError(res, 404, 'NOT_FOUND', 'Medical record not found');
   }
+  (req as AuditableRequest).audit?.('medical_record.deleted', 'medical_record', req.params.id);
   return res.json(ok(null, 'Medical record deleted'));
 });
 

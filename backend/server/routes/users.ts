@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { authenticateJWT, authorizeRoles, type AuthenticatedRequest } from '../../middleware/auth';
+import type { AuditableRequest } from '../../middleware/auditLog';
 import { UserRole } from '../../models/UserRole';
 import { ok, sendError } from '../response';
 import { userRepository, type DBUser } from '../../src/repositories/userRepository';
@@ -22,6 +23,7 @@ function sanitize(u: DBUser) {
 router.get('/me', authenticateJWT, (req: AuthenticatedRequest, res) => {
   const user = store.users.get(req.user!.id);
   if (!user) return sendError(res, 404, 'NOT_FOUND', 'User not found');
+  (req as AuditableRequest).audit?.('user.login', 'user', req.user!.id);
   return res.json(ok(sanitize(user)));
 });
 
@@ -90,6 +92,7 @@ router.post('/', async (req, res) => {
     is_email_verified: false,
   });
 
+  (req as AuditableRequest).audit?.('user.created', 'user', id, { email: email.trim() });
   return res.status(201).json(ok(sanitize(user), 'User created'));
 });
 
@@ -112,13 +115,15 @@ router.put('/:id', authenticateJWT, (req: AuthenticatedRequest, res) => {
     updatedAt: new Date().toISOString(),
   };
   store.users.set(user.id, next);
+  (req as AuditableRequest).audit?.('user.updated', 'user', user.id);
   return res.json(ok(sanitize(next), 'User updated'));
 });
 
-router.delete('/:id', authenticateJWT, authorizeRoles(UserRole.ADMIN), (req, res) => {
+router.delete('/:id', authenticateJWT, authorizeRoles(UserRole.ADMIN), (req: AuthenticatedRequest, res) => {
   if (!store.users.delete(req.params.id)) {
     return sendError(res, 404, 'NOT_FOUND', 'User not found');
   }
+  (req as AuditableRequest).audit?.('user.deleted', 'user', req.params.id);
   return res.json(ok(null, 'User deleted'));
 });
 
