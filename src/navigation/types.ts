@@ -12,6 +12,8 @@ export type RootStackParamList = {
   // Modals
   QRScanner: undefined;
   ManualEntry: undefined;
+  // Future: Payment / Subscription
+  Payment: { planId?: string };
 };
 
 // ─── Main Tab ─────────────────────────────────────────────────────────────────

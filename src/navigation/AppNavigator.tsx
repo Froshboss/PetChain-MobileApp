@@ -23,6 +23,7 @@ import PetHealthMetricsScreen from '../screens/PetHealthMetricsScreen';
 import PetListScreen from '../screens/PetListScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import QRScannerScreen from '../screens/QRScannerScreen';
+import PaymentScreen from '../screens/PaymentScreen';
 import analyticsService from '../services/analyticsService';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -194,6 +195,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       },
       QRScanner: 'scan',
       ManualEntry: 'manual-entry',
+      Payment: 'payment',
     },
   },
 };
@@ -252,6 +254,11 @@ export default function AppNavigator() {
               />
             )}
           </RootStack.Screen>
+          <RootStack.Screen
+            name="Payment"
+            component={PaymentScreen}
+            options={{ headerShown: true, title: 'Premium Plans' }}
+          />
         </RootStack.Group>
       </RootStack.Navigator>
     </NavigationContainer>
