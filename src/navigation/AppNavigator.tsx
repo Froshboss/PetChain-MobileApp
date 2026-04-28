@@ -8,6 +8,7 @@ import { DEEP_LINK_PREFIX } from './types';
 import type { Pet } from '../models/Pet';
 import AppointmentScreen from '../screens/AppointmentScreen';
 import AuthNavigator from '../screens/AuthNavigator';
+import CommunityScreen from '../screens/CommunityScreen';
 import EmergencyContactsScreen from '../screens/EmergencyContactsScreen';
 import ManualEntryScreen from '../screens/ManualEntryScreen';
 import MedicalRecordSearchScreen from '../screens/MedicalRecordSearchScreen';
@@ -151,6 +152,11 @@ function MainTabs() {
         options={{ title: 'Appointments' }}
       />
       <Tab.Screen
+        name="Community"
+        component={CommunityScreen}
+        options={{ title: 'Community' }}
+      />
+      <Tab.Screen
         name="Emergency"
         component={EmergencyContactsScreen}
         options={{ title: 'Emergency' }}
@@ -181,6 +187,7 @@ const linking: LinkingOptions<RootStackParamList> = {
           },
           Medications: 'medications',
           Appointments: 'appointments',
+          Community: 'community',
           Emergency: 'emergency',
           Profile: 'profile',
         },

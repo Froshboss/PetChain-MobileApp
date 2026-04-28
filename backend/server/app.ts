@@ -5,6 +5,7 @@ import { errBody } from './response';
 import analyticsRouter from './routes/analytics';
 import backupsRouter from './routes/backups';
 import appointmentsRouter from './routes/appointments';
+import communityRouter from './routes/community';
 import medicalRecordsRouter from './routes/medicalRecords';
 import medicationsRouter from './routes/medications';
 import petsRouter from './routes/pets';
