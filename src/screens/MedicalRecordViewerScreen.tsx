@@ -18,6 +18,7 @@ import {
   type MedicalRecord,
   type RecordFilters,
 } from '../services/medicalRecordService';
+import MedicalRecordAttachments from '../components/MedicalRecordAttachments';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,11 @@ const MedicalRecordViewerScreen: React.FC<Props> = ({ petId, petName, onBack }) 
         </Text>
       ) : null}
       {item.veterinarian ? <Text style={styles.cardMeta}>Vet: {item.veterinarian}</Text> : null}
+      {item.documents?.length ? (
+        <Text style={styles.cardMeta}>
+          {item.documents.length} attachment{item.documents.length === 1 ? '' : 's'}
+        </Text>
+      ) : null}
     </TouchableOpacity>
   ), []);
 
@@ -341,6 +347,7 @@ const MedicalRecordViewerScreen: React.FC<Props> = ({ petId, petName, onBack }) 
               {(detailRecord as ExtendedRecord).dosage ? (
                 <DetailRow label="Dosage" value={(detailRecord as ExtendedRecord).dosage!} />
               ) : null}
+              <MedicalRecordAttachments documents={detailRecord.documents} />
               <DetailRow
                 label="Created"
                 value={new Date(detailRecord.createdAt).toLocaleDateString()}

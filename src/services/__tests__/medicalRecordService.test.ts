@@ -13,6 +13,13 @@ describe('medicalRecordService', () => {
     date: '2023-01-01',
     notes: 'test',
   };
+  const mockDocument = {
+    id: 'doc-1',
+    name: 'lab-results.pdf',
+    mimeType: 'application/pdf',
+    type: 'pdf',
+    url: 'https://example.com/lab-results.pdf',
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -68,9 +75,12 @@ describe('medicalRecordService', () => {
 
   describe('createMedicalRecord', () => {
     it('should create a new medical record', async () => {
-      mockedAxios.post.mockResolvedValue({ data: mockRecord });
-      const result = await createMedicalRecord(mockPetId, { type: 'vaccination' } as any);
-      expect(result).toEqual(mockRecord);
+      mockedAxios.post.mockResolvedValue({ data: { ...mockRecord, documents: [mockDocument] } });
+      const result = await createMedicalRecord(mockPetId, {
+        type: 'vaccination',
+        documents: [mockDocument],
+      } as any);
+      expect(result).toEqual({ ...mockRecord, documents: [mockDocument] });
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining(`/pets/${mockPetId}/medical-records`),
         expect.any(Object)

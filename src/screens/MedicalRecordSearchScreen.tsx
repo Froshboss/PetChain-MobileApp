@@ -47,6 +47,11 @@ const MedicalRecordSearchScreen: React.FC<Props> = ({ petId, onBack }) => {
       </View>
       {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
       {item.veterinarian ? <Text style={styles.meta}>Vet: {item.veterinarian}</Text> : null}
+      {item.documents?.length ? (
+        <Text style={styles.meta}>
+          {item.documents.length} attachment{item.documents.length === 1 ? '' : 's'}
+        </Text>
+      ) : null}
       {!offlineStatus?.isOnline ? <Text style={styles.cachedChip}>Cached</Text> : null}
     </View>
   ), [offlineStatus?.isOnline]);
